@@ -11,12 +11,12 @@ from os.path import expanduser
 def load():
     global_cfg_file = expanduser("~") + '/.jst/jst.properties'
     if (not os.path.isfile(global_cfg_file)):
-       raise FileNotFoundError(global_cfg_file)
+        raise FileNotFoundError(global_cfg_file)
 
     cwd = os.getcwd()
     ctx_file = cwd + '/jstcontext.properties'
     if (not os.path.isfile(ctx_file)):
-       raise FileNotFoundError(ctx_file)
+        raise FileNotFoundError(ctx_file)
 
     global_cfg = configparser.ConfigParser()
     global_cfg.read(global_cfg_file)
