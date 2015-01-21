@@ -24,8 +24,8 @@ def load():
     
     ctx = configparser.ConfigParser()
     ctx.read(ctx_file)
-    ctx['src']['url_ce'] = 'svn+ssh://' + global_cfg['src']['user'] + '@falcon.jaspersoft.com/jasperserver/' + ctx['src']['branch_ce']
-    ctx['src']['url_pro'] = 'svn+ssh://' + global_cfg['src']['user'] + '@falcon.jaspersoft.com/jasperserver-pro/' + ctx['src']['branch_pro']
+    ctx['src']['url_ce'] = 'svn+ssh://' + global_cfg['src']['user'] + '@' + global_cfg['src']['url_ce'] + '/' + ctx['src']['branch_ce']
+    ctx['src']['url_pro'] = 'svn+ssh://' + global_cfg['src']['user'] + '@' + global_cfg['src']['url_pro'] + '/' + ctx['src']['branch_pro']
 
     ctx['src']['working_copy_ce'] = cwd + '/ce'
     ctx['src']['working_copy_pro'] = cwd + '/pro'
