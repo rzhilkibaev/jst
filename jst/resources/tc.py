@@ -3,17 +3,17 @@ Created on Jan 7, 2015
 
 @author: rz
 '''
+import os
 import psutil
 import re
 import shutil
 import subprocess
 from time import sleep
-import os
 
 
 def execute(action, args, ctx):
     """ executes an action against a tomcat instance """
-    
+
     if action == 'init':
         _init(ctx)
     elif action == 'status':
@@ -59,7 +59,7 @@ def _get_http_port(catalina_args):
         match = re.search('-Dport\.http=(\d*)', catalina_arg)
         if match:
             return match.group(1)
-            
+
 
 
 def _get_debug_port(catalina_args):
@@ -67,7 +67,7 @@ def _get_debug_port(catalina_args):
         match = re.search('-agentlib:.*,address=(\d*)', catalina_arg)
         if match:
             return match.group(1)
-            
+
 
 
 def _deploy(args, ctx):
@@ -84,7 +84,7 @@ def _deploy(args, ctx):
 
 def _execute_catalina_action(action, ctx):
     """ executes catalina.sh script passing action as an argument """
-    
+
     os.environ['CATALINA_HOME'] = ctx['tc']['home']
     os.environ['CATALINA_OPTS'] = ctx['tc']['catalina_opts']
     os.environ['JAVA_OPTS'] = ctx['tc']['java_opts']
