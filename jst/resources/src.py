@@ -3,18 +3,17 @@ Created on Jan 7, 2015
 
 @author: rz
 '''
-import subprocess
-
 from os.path import expanduser
+import subprocess
 
 
 def execute(action, args, ctx):
     """ executes an action against ce and pro source trees """
 
     buildomatic_dir = ctx['src']['working_copy_ce'] + '/buildomatic'
-    
+
     if action == 'configure':
-        _configure(buildomatic_dir)
+        _configure(buildomatic_dir, ctx)
     elif action == 'build':
         _build(args, buildomatic_dir)
     else:
@@ -25,10 +24,10 @@ def execute(action, args, ctx):
 def _configure(buildomatic_dir, ctx):
     """ configures build system and application (set database properties, etc...) """
     _write_default_master_properties(buildomatic_dir, ctx)
-    
+
 def _write_default_master_properties(buildomatic_dir, ctx):
     """ writes default_master.properties file """
-    properties_template_file = expanduser("~") + '/default_master.properties'
+    properties_template_file = expanduser("~") + '/.jst/templates/default_master.properties'
     with open(buildomatic_dir + '/default_master.properties', 'wt') as fout:
         with open(properties_template_file, 'rt') as fin:
             for line in fin:
@@ -36,7 +35,7 @@ def _write_default_master_properties(buildomatic_dir, ctx):
                 result_line = result_line.replace('%src.working_copy_ce%', ctx['src']['working_copy_ce'])
                 result_line = result_line.replace('%src.working_copy_pro%', ctx['src']['working_copy_pro'])
                 fout.write(result_line)
-                print(result_line, end='')
+                print(result_line, end = '')
 
 def _build(args, buildomatic_dir):
     """
@@ -62,6 +61,6 @@ def _execute_shell_action_on_working_copy(action, url, working_copy):
         cmd = action_to_cmd[action]
     except KeyError:
         raise ValueError("Unknown action: " + action)
-    
+
     subprocess.call(cmd)
 
