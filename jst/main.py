@@ -5,7 +5,7 @@ Usage: jst [--context=FILE] <resource> <action> [<args>...]
 """
 from docopt import docopt
 
-from common import context
+from resources import context
 
 
 if __name__ == '__main__':
@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     elif (resource == 'ctx'):
 
-        context.show(ctx)
+        context.execute(action, action_args, ctx)
 
     else:
         print('Unknown resource: ' + resource)
