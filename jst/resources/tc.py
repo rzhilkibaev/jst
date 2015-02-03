@@ -3,6 +3,7 @@ Created on Jan 7, 2015
 
 @author: rz
 '''
+import glob
 import os
 import psutil
 import re
@@ -18,6 +19,8 @@ def execute(action, args, ctx):
         _init(ctx)
     elif action == 'status':
         _show_status(ctx)
+    elif action == 'go':
+        _go(ctx)
     elif action == 'deploy':
         _deploy(args, ctx)
     elif action == 'restart':
@@ -70,15 +73,30 @@ def _get_debug_port(catalina_args):
 
 
 
+def _go(ctx):
+    match = re.search('-Dport\.http=(\d*)', ctx['tc']['java_opts'])
+    if match:
+        http_port = match.group(1)
+        subprocess.call(['xdg-open', 'http://localhost:' + http_port + '/jasperserver-pro'],
+                        stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+
+
+
 def _deploy(args, ctx):
-    build_xml = ctx['src']['working_copy_ce'] + '/buildomatic/build.xml'
 
     if len(args) == 0:
+        build_xml = ctx['src']['working_copy_ce'] + '/buildomatic/build.xml'
         subprocess.call(['ant', '-buildfile', build_xml, 'deploy-webapp-pro'])
     else:
-        ant_target = 'build-dir-' + args[0]
-        dir_name = args[1]
-        subprocess.call(['ant', '-buildfile', build_xml, ant_target, '-DdirName=' + dir_name])
+        edition = args[0]
+        source = ctx['src']['working_copy_' + edition] + '/' + args[1] + '/target/*.jar'
+        files = glob.glob(source)
+        destination = ctx['tc']['home'] + '/webapps/jasperserver-pro/WEB-INF/lib/'
+        if (len(files)):
+            shutil.copy(files[0], destination)
+            print(files[0])
+        else:
+            print('nothing to copy at: ' + source)
 
 
 
