@@ -27,6 +27,7 @@ def execute(action, args, ctx):
         _execute_catalina_action('stop', ctx)
         sleep(6)
         _execute_catalina_action('start', ctx)
+        _show_status(ctx)
     elif action == 'start':
         _execute_catalina_action(action, ctx)
         _show_status(ctx)
