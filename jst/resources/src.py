@@ -53,7 +53,7 @@ def _build(args, buildomatic_dir):
 def _execute_shell_action_on_working_copy(action, url, working_copy):
     """ executes shell one-liner """
     action_to_cmd = {'checkout': ['svn', 'checkout', url, working_copy],
-                     'update': ['svn', 'update', '--quiet', working_copy],
+                     'update': ['svn', 'update', working_copy],
                      'status': ['svn', 'status', '--quiet', working_copy],
                      'revert': ['svn', 'revert', '-R', working_copy],
                      'wipe': ['rm', '-R', working_copy]}
