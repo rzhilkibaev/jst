@@ -12,8 +12,8 @@ def execute(action, args, ctx):
 
     buildomatic_dir = ctx['src']['working_copy_ce'] + '/buildomatic'
 
-    if action == 'configure':
-        _configure(buildomatic_dir, ctx)
+    if action == 'init':
+        _init(buildomatic_dir, ctx)
     elif action == 'build':
         _build(args, buildomatic_dir)
     else:
@@ -21,9 +21,23 @@ def execute(action, args, ctx):
         _execute_shell_action_on_working_copy(action, ctx['src']['url_pro'], ctx['src']['working_copy_pro'])
 
 
-def _configure(buildomatic_dir, ctx):
+
+def _init(buildomatic_dir, ctx):
     """ configures build system and application (set database properties, etc...) """
+    _execute_shell_action_on_working_copy('checkout', ctx['src']['url_ce'], ctx['src']['working_copy_ce'])
+    _execute_shell_action_on_working_copy('checkout', ctx['src']['url_pro'], ctx['src']['working_copy_pro'])
     _write_default_master_properties(buildomatic_dir, ctx)
+    _build(buildomatic_dir)
+    _configure_eclipse(buildomatic_dir, ctx)
+
+
+
+def _configure_eclipse(buildomatic_dir, ctx):
+    cmd = ['mvn', 'eclipse:eclipse', '-DdownloadSources=true', '-DdownloadJavadocs=true']
+    subprocess.call(cmd, cwd = ctx['src']['working_copy_ce'])
+    subprocess.call(cmd, cwd = ctx['src']['working_copy_pro'])
+
+
 
 def _write_default_master_properties(buildomatic_dir, ctx):
     """ writes default_master.properties file """
@@ -37,7 +51,7 @@ def _write_default_master_properties(buildomatic_dir, ctx):
                 fout.write(result_line)
                 print(result_line, end = '')
 
-def _build(args, buildomatic_dir):
+def _build(buildomatic_dir, args = []):
     """
     builds both source trees
         args - if empty then both ce and pro source trees are built, otherwise
@@ -55,6 +69,7 @@ def _execute_shell_action_on_working_copy(action, url, working_copy):
     action_to_cmd = {'checkout': ['svn', 'checkout', url, working_copy],
                      'update': ['svn', 'update', working_copy],
                      'status': ['svn', 'status', '--quiet', working_copy],
+                     'diff': ['svn', 'diff', working_copy],
                      'revert': ['svn', 'revert', '-R', working_copy],
                      'wipe': ['rm', '-R', working_copy]}
     try:
