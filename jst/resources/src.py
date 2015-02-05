@@ -15,7 +15,7 @@ def execute(action, args, ctx):
     if action == 'init':
         _init(buildomatic_dir, ctx)
     elif action == 'build':
-        _build(args, buildomatic_dir)
+        _build(buildomatic_dir, args)
     else:
         _execute_shell_action_on_working_copy(action, ctx['src']['url_ce'], ctx['src']['working_copy_ce'])
         _execute_shell_action_on_working_copy(action, ctx['src']['url_pro'], ctx['src']['working_copy_pro'])
