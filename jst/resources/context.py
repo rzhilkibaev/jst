@@ -1,142 +1,128 @@
-'''
+"""
 Created on Jan 18, 2015
 
 @author: rz
-'''
+"""
 import configparser
 import os
 from os.path import expanduser
+import shutil
+
+
+_app_name = "jst"
 
 
 def load(args):
-    '''
-    Loads a context from a context file.
-    A context file is a file in INI format which specifies properties associated with a particular context.
-    There are several ways to specify context file location.
-    1. --context command line argument
-    2. jstcontext.properties in current directory
-    3. JST_CONTEXT environment variable
-    The locations are checked in the order they are listed here.
-    If location is specified and found then the file is used and the other locations are not checked.
-    If location is specified but not present then error is generated.
-    If location is not specified then next location is used.
-    If none of the locations are present an error is generated.
-    '''
-    jst_data_dir = expanduser("~") + '/.jst'
+
     ctx = configparser.ConfigParser()
-    _read_config(jst_data_dir + '/jst.properties', ctx)
-    _read_config(_get_ctx_file(args), ctx)
 
-    # src
-    _ensure_cfg_value(ctx, 'src', 'branch_ce', 'trunk')
-    _ensure_cfg_value(ctx, 'src', 'branch_pro', 'trunk')
+    _load_user_properties(ctx)
+    _load_workspace_properties(ctx)
 
-    url_ce = 'svn+ssh://' + ctx['src']['user'] + '@' + ctx['src']['server_ce'] + '/' + ctx['src']['repo_ce'] + '/' + ctx['src']['branch_ce']
-    url_pro = 'svn+ssh://' + ctx['src']['user'] + '@' + ctx['src']['server_pro'] + '/' + ctx['src']['repo_pro'] + '/' + ctx['src']['branch_pro']
-    _ensure_cfg_value(ctx, 'src', 'url_ce', url_ce)
-    _ensure_cfg_value(ctx, 'src', 'url_pro', url_pro)
-
-    cwd = os.getcwd()
-
-    _ensure_cfg_value(ctx, 'src', 'working_copy_ce', cwd + '/ce')
-    _ensure_cfg_value(ctx, 'src', 'working_copy_pro', cwd + '/pro')
-
-    # tc
-    _ensure_cfg_value(ctx, 'tc', 'home', cwd + '/tc')
-    _ensure_cfg_value(ctx, 'tc', 'distribution', jst_data_dir + '/lib/tomcat')
+    _ensure_all_properties(ctx)
 
     return ctx
 
 
 
-def _show_context(ctx):
+def _load_user_properties(ctx):
+    user_properties_file = expanduser("~") + "/." + _app_name + "/" + _app_name + ".properties"
+    default_user_properties_file = os.path.dirname(__file__) + "/" + "default.user.properties"
 
-    print('src.url_ce  = ' + ctx['src']['url_ce'])
-    print('src.url_pro = ' + ctx['src']['url_pro'])
-
-    print('src.working_copy_ce  = ' + ctx['src']['working_copy_ce'])
-    print('src.working_copy_pro = ' + ctx['src']['working_copy_pro'])
-
-    print('tc.home = ' + ctx['tc']['home'])
-    print('tc.distribution = ' + ctx['tc']['distribution'])
-    print('tc.catalina_opts = ' + ctx['tc']['catalina_opts'])
-    print('tc.java_opts = ' + ctx['tc']['java_opts'])
+    _ensure_file_present(user_properties_file, default_user_properties_file)
+    _load_properties(user_properties_file, ctx)
 
 
 
-def _show_help():
-    print('''\
-    [src]
+def _load_workspace_properties(ctx):
+    workspace_properties_file = os.getcwd() + "/" + _app_name + ".properties"
+    default_workspace_properties_file = os.path.dirname(__file__) + "/" + "default.workspace.properties"
 
-    # svn user
-    user = john
-
-    # server name
-    server_ce = code.mycompany.com
-    server_pro = code.mycompany.com
-
-    # repository name
-    repo_ce = myapp
-    repo_pro = myapp-pro
-
-    # branch name (default: trunk)
-    branch_ce = trunk
-    branch_pro = trunk
-    
-    # url
-    # this property overrides all of the above properties
-    # default: svn+ssh://<user>@<server_ce(pro)>/<repo_ce(pro)>/<branch_ce(pro)>
-    url_ce = svn+ssh://john@code.mycompany.com/myapp/trunk
-    url_pro = svn+ssh://john@code.mycompany.com/myapp-pro/trunk
-    
-    # working copy
-    # svn working copy location
-    # default: <context_home>/ce(pro)
-    working_copy_ce = /home/john/code/ce
-    working_copy_pro = /home/john/code/pro
-    
-    [tc]
-    
-    # Tomcat's CATALINA_OPTS
-    catalina_opts = -agentlib:jdwp=transport=dt_socket,address=11044,server=y,suspend=n -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m
-    # Tomcat's JAVA_OPTS
-    java_opts=-Dport.http=18080 -Dport.ajp=18009 -Dport.shutdown=18005
-    ''')
+    _ensure_file_present(workspace_properties_file, default_workspace_properties_file)
+    _load_properties(workspace_properties_file, ctx)
 
 
 
-def execute(action, args, ctx):
-    if (action == 'show'):
-        _show_context(ctx)
-
-
-
-def _get_ctx_file(args):
-    # check the command line argument first
-    ctx_file = args['--context']
-    if (ctx_file):
-        return ctx_file
-
-    # check the context file in the current directory
-    ctx_file = os.getcwd() + '/jstcontext.properties'
-    if (os.path.isfile(ctx_file)):
-        return ctx_file
-
-    # check the environment variable
-    ctx_file = os.environ.get('JST_CONTEXT')
-    if ((not ctx_file) or (not os.path.isfile(ctx_file))):
-        raise FileNotFoundError('Cannot find context file: ' + str(ctx_file))
-
-
-
-def _read_config(file, ctx):
+def _ensure_file_present(file, default):
     if (not os.path.isfile(file)):
-        raise FileNotFoundError('Cannot find context file: ' + str(file))
+        shutil.copy(default, file)
+
+
+
+def _load_properties(file, ctx):
+    if (not os.path.isfile(file)):
+        raise FileNotFoundError("Cannot find properties file: " + str(file))
 
     ctx.read(file)
 
 
 
-def _ensure_cfg_value(ctx, section, option, fallback):
-    if (not ctx.get(section, option, fallback = False)):
-        ctx.set(section, option, fallback)
+def _ensure_all_properties(ctx):
+    # src
+
+    _ensure_property(ctx, "src", "user", "anonymous")
+
+    _ensure_property(ctx, "src", "server", "falcon.jaspersoft.com")
+
+    _ensure_property(ctx, "src", "repo_ce", "jasperserver")
+    _ensure_property(ctx, "src", "repo_pro", "jasperserver-pro")
+
+    _ensure_property(ctx, "src", "branch_ce", "trunk")
+    _ensure_property(ctx, "src", "branch_pro", "trunk")
+
+    url_ce = "svn+ssh://" + ctx["src"]["user"] + "@" + ctx["src"]["server"] + "/" + ctx["src"]["repo_ce"] + "/" + ctx["src"]["branch_ce"]
+    url_pro = "svn+ssh://" + ctx["src"]["user"] + "@" + ctx["src"]["server"] + "/" + ctx["src"]["repo_pro"] + "/" + ctx["src"]["branch_pro"]
+    _ensure_property(ctx, "src", "url_ce", url_ce)
+    _ensure_property(ctx, "src", "url_pro", url_pro)
+
+    cwd = os.getcwd()
+
+    _ensure_property(ctx, "src", "working_copy_ce", cwd + "/ce")
+    _ensure_property(ctx, "src", "working_copy_pro", cwd + "/pro")
+
+    # tc
+    _ensure_property(ctx, "tc", "home", cwd + "/tc")
+    _ensure_property(ctx, "tc", "distribution", expanduser("~") + "/." + _app_name + "/lib/tomcat")
+    _ensure_property(ctx, "tc", "java_opts", "-Dport.http=8080 -Dport.ajp=8009 -Dport.shutdown=8005")
+    _ensure_property(ctx, "tc", "catalina_opts", "-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled")
+
+
+
+
+def _ensure_property(ctx, section, prop, default = None):
+    """
+    Ensures that the property is present in the context.
+    If default is None and the property is not present then ValueError is thrown.
+    If default is set and the property is not present the default is used.
+    """
+    if (not ctx.get(section, prop, fallback = False)):
+        if (default):
+            if (not ctx.has_section(section)):
+                ctx.add_section(section)
+            ctx.set(section, prop, default)
+        else:
+            raise ValueError("Property " + section + "." + prop + " is mandatory")
+
+
+
+def _show_context(ctx):
+
+    print("src.url_ce  = " + ctx["src"]["url_ce"])
+    print("src.url_pro = " + ctx["src"]["url_pro"])
+
+    print("src.working_copy_ce  = " + ctx["src"]["working_copy_ce"])
+    print("src.working_copy_pro = " + ctx["src"]["working_copy_pro"])
+
+    print("tc.home = " + ctx["tc"]["home"])
+    print("tc.distribution = " + ctx["tc"]["distribution"])
+    print("tc.catalina_opts = " + ctx["tc"]["catalina_opts"])
+    print("tc.java_opts = " + ctx["tc"]["java_opts"])
+
+
+
+def execute(action, args, ctx):
+    if (action == "show"):
+        _show_context(ctx)
+
+
+
