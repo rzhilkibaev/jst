@@ -83,7 +83,7 @@ def _ensure_all_properties(ctx):
     _ensure_property(ctx, "src", "working_copy_pro", cwd + "/pro")
 
     # tc
-    _ensure_property(ctx, "tc", "home", cwd + "/tc")
+    _ensure_property(ctx, "tc", "home", cwd + "/tomcat")
     _ensure_property(ctx, "tc", "distribution", ctx['jst']['data_dir'] + "/lib/tomcat")
     _ensure_property(ctx, "tc", "java_opts", "-Dport.http=8080 -Dport.ajp=8009 -Dport.shutdown=8005")
     _ensure_property(ctx, "tc", "catalina_opts", "-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled")
