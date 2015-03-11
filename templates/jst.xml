@@ -1,0 +1,14 @@
+<project name="mybuild" default="maven-effective-settings">
+
+    <import file="build.xml"/>
+
+    <property name="VERBOSE_LOGGING" value="true" />
+
+    <target name="maven-effective-settings"
+            depends="init-source-paths, set-ce-webapp-name">
+            <runmaven dir="${js-path}">
+                <arg value="help:effective-settings"/>
+            </runmaven>
+    </target>
+
+</project>
