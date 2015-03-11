@@ -28,14 +28,7 @@ def _init(buildomatic_dir, ctx):
     _execute_shell_action_on_working_copy('checkout', ctx['src']['url_pro'], ctx['src']['working_copy_pro'])
     _write_default_master_properties(buildomatic_dir, ctx)
     _build(buildomatic_dir)
-    _configure_eclipse(buildomatic_dir, ctx)
-
-
-
-def _configure_eclipse(buildomatic_dir, ctx):
-    cmd = ['mvn', 'eclipse:eclipse', '-DdownloadSources=true', '-DdownloadJavadocs=true']
-    subprocess.call(cmd, cwd = ctx['src']['working_copy_ce'])
-    subprocess.call(cmd, cwd = ctx['src']['working_copy_pro'])
+    # _configure_eclipse(buildomatic_dir, ctx)
 
 
 
@@ -63,6 +56,15 @@ def _build(buildomatic_dir, args = []):
         ant_target = 'build-dir-' + args[0]
         dir_name = args[1]
         subprocess.call(['ant', '-DSKIP_TEST_ARG=skipTests', '-buildfile', buildomatic_dir + '/build.xml', ant_target, '-DdirName=' + dir_name])
+
+
+
+def _configure_eclipse(buildomatic_dir, ctx):
+    cmd = ['mvn', 'eclipse:eclipse', '-DdownloadSources=true', '-DdownloadJavadocs=true']
+    subprocess.call(cmd, cwd = ctx['src']['working_copy_ce'])
+    subprocess.call(cmd, cwd = ctx['src']['working_copy_pro'])
+
+
 
 def _execute_shell_action_on_working_copy(action, url, working_copy):
     """ executes shell one-liner """
