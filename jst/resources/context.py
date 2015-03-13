@@ -29,7 +29,6 @@ def _ensure_core_properties(ctx):
 
 
 def load(args):
-
     ctx = configparser.ConfigParser()
 
     _ensure_core_properties(ctx)
@@ -37,7 +36,7 @@ def load(args):
     _load_user_properties(ctx)
     _load_workspace_properties(ctx)
 
-    _ensure_all_properties(ctx)
+    _ensure_all_properties(ctx, args)
 
     return ctx
 
@@ -75,7 +74,7 @@ def _load_properties(file, ctx):
 
 
 
-def _ensure_all_properties(ctx):
+def _ensure_all_properties(ctx, args):
 
     # src
     _ensure_property(ctx, "src", "user", "anonymous")
@@ -97,6 +96,14 @@ def _ensure_all_properties(ctx):
 
     _ensure_property(ctx, "src", "working_copy_ce", cwd + "/ce")
     _ensure_property(ctx, "src", "working_copy_pro", cwd + "/pro")
+
+    _ensure_property(ctx, "src", "skip_tests", "false")
+
+    action_args = args['<args>']
+    if ("--skip-tests=true" in action_args):
+        ctx["src"]["skip_tests"] = "true"
+    elif ("--skip-tests=false" in action_args):
+        ctx["src"]["skip_tests"] = "false"
 
     # tc
     _ensure_property(ctx, "tc", "distribution_url", "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v7.0.59/bin/apache-tomcat-7.0.59.tar.gz")
@@ -133,6 +140,7 @@ def _show_context(ctx):
 
     print("src.working_copy_ce  = " + ctx["src"]["working_copy_ce"])
     print("src.working_copy_pro = " + ctx["src"]["working_copy_pro"])
+    print("src.skip_tests = " + ctx["src"]["skip_tests"])
 
     print("tc.home = " + ctx["tc"]["home"])
     print("tc.catalina_opts = " + ctx["tc"]["catalina_opts"])

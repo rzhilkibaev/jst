@@ -16,7 +16,7 @@ def execute(action, args, ctx):
     if action == "init":
         _init(buildomatic_dir, ctx)
     elif action in ["build", "rebuild"]:
-        _build(buildomatic_dir, args)
+        _build(ctx, buildomatic_dir, args)
     else:
         _execute_svn_action(action, ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
         _execute_svn_action(action, ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
@@ -31,7 +31,7 @@ def _init(buildomatic_dir, ctx):
 
     _write_default_master_properties(buildomatic_dir, ctx)
 
-    _build(buildomatic_dir)
+    _build(ctx, buildomatic_dir)
 
     _write_maven_settings_xml(buildomatic_dir, ctx)
 
@@ -57,18 +57,23 @@ def _write_default_master_properties(buildomatic_dir, ctx):
                 fout.write(result_line)
                 print(result_line, end = "")
 
-def _build(buildomatic_dir, args = []):
+def _build(ctx, buildomatic_dir, args = []):
     """
     builds both source trees
         args - if empty then both ce and pro source trees are built, otherwise
             first argument is either "ce" or "pro" and the second a directory to build
     """
+    skip_tests_arg = ""
+
+    if (ctx["src"]["skip_tests"] == "true"):
+        skip_tests_arg = "-DSKIP_TEST_ARG=skipTests"
+
     if len(args) == 0:
-        subprocess.call(["ant", "-DSKIP_TEST_ARG=skipTests", "-buildfile", buildomatic_dir + "/build.xml", "build-src-all"])
+        subprocess.call(["ant", skip_tests_arg, "-buildfile", buildomatic_dir + "/build.xml", "build-src-all"])
     else:
-        ant_target = "build-dir-" + args[0]
+        ant_target = "build-dir-" + args[0] # ce/pro
         dir_name = args[1]
-        subprocess.call(["ant", "-DSKIP_TEST_ARG=skipTests", "-buildfile", buildomatic_dir + "/build.xml", ant_target, "-DdirName=" + dir_name])
+        subprocess.call(["ant", skip_tests_arg, "-buildfile", buildomatic_dir + "/build.xml", ant_target, "-DdirName=" + dir_name])
 
 
 
