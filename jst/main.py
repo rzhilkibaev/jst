@@ -3,6 +3,16 @@ Usage: jst [-h|--help] <resource> <action> [<args>...]
 
 This tool manages jrs instances.
 
+For a quick start run:
+mkdir jrs-trunk
+cd jrs-trunk
+jst ctx init
+jst tc init
+jst src init --skip-tests
+jst tc deploy
+jst tc start
+jst tc go
+
 jst ctx init              Initialize context (create configuration files with default values)
                           There are two configuration files: ~/.jst/jst.properties (user config)
                           and jst.properties (context config) in the current directory
