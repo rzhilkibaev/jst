@@ -80,7 +80,7 @@ def _ensure_all_properties(ctx):
     # src
     _ensure_property(ctx, "src", "user", "anonymous")
 
-    _ensure_property(ctx, "src", "server", "falcon.jaspersoft.com")
+    _ensure_property(ctx, "src", "server", "svnserver.jaspersoft.com")
 
     _ensure_property(ctx, "src", "repo_ce", "jasperserver")
     _ensure_property(ctx, "src", "repo_pro", "jasperserver-pro")
@@ -88,8 +88,8 @@ def _ensure_all_properties(ctx):
     _ensure_property(ctx, "src", "branch_ce", "trunk")
     _ensure_property(ctx, "src", "branch_pro", "trunk")
 
-    url_ce = "svn+ssh://" + ctx["src"]["user"] + "@" + ctx["src"]["server"] + "/" + ctx["src"]["repo_ce"] + "/" + ctx["src"]["branch_ce"]
-    url_pro = "svn+ssh://" + ctx["src"]["user"] + "@" + ctx["src"]["server"] + "/" + ctx["src"]["repo_pro"] + "/" + ctx["src"]["branch_pro"]
+    url_ce = "https://" + ctx["src"]["user"] + "@" + ctx["src"]["server"] + "/" + ctx["src"]["repo_ce"] + "/" + ctx["src"]["branch_ce"]
+    url_pro = "https://" + ctx["src"]["user"] + "@" + ctx["src"]["server"] + "/" + ctx["src"]["repo_pro"] + "/" + ctx["src"]["branch_pro"]
     _ensure_property(ctx, "src", "url_ce", url_ce)
     _ensure_property(ctx, "src", "url_pro", url_pro)
 
