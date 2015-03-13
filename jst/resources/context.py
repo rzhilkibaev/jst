@@ -100,7 +100,7 @@ def _ensure_all_properties(ctx, args):
     _ensure_property(ctx, "src", "skip_tests", "false")
 
     action_args = args['<args>']
-    if ("--skip-tests=true" in action_args):
+    if (("--skip-tests=true" in action_args) or ("--skip-tests" in action_args)):
         ctx["src"]["skip_tests"] = "true"
     elif ("--skip-tests=false" in action_args):
         ctx["src"]["skip_tests"] = "false"
