@@ -18,18 +18,25 @@ def execute(action, args, ctx):
     elif action in ["build", "rebuild"]:
         _build(buildomatic_dir, args)
     else:
-        _execute_shell_action_on_working_copy(action, ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
-        _execute_shell_action_on_working_copy(action, ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
+        _execute_svn_action(action, ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
+        _execute_svn_action(action, ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
 
 
 
 def _init(buildomatic_dir, ctx):
     """ configures build system and application (set database properties, etc...) """
-    _execute_shell_action_on_working_copy("checkout", ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
-    _execute_shell_action_on_working_copy("checkout", ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
+
+    subprocess.call(["rm", "-R", ctx["src"]["working_copy_ce"]])
+    _execute_svn_action("checkout", ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
+
+    subprocess.call(["rm", "-R", ctx["src"]["working_copy_ce"]])
+    _execute_svn_action("checkout", ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
+
     _write_default_master_properties(buildomatic_dir, ctx)
+
     _build(buildomatic_dir)
-    _configure_eclipse(buildomatic_dir, ctx)
+
+    _write_maven_settings_xml(buildomatic_dir, ctx)
 
 
 
@@ -60,7 +67,7 @@ def _build(buildomatic_dir, args = []):
 
 
 
-def _configure_eclipse(buildomatic_dir, ctx):
+def _write_maven_settings_xml(buildomatic_dir, ctx):
     jst_xml = buildomatic_dir + "/jst.xml"
     if (not os.path.isfile(jst_xml)):
         shutil.copy(ctx["core"]["templates"] + "/jst.xml", jst_xml)
@@ -90,14 +97,13 @@ def _configure_eclipse(buildomatic_dir, ctx):
         print(result, file = text_file)
 
 
-def _execute_shell_action_on_working_copy(action, url, working_copy):
+def _execute_svn_action(action, url, working_copy):
     """ executes shell one-liner """
     action_to_cmd = {"checkout": ["svn", "checkout", url, working_copy],
                      "update": ["svn", "update", working_copy],
                      "status": ["svn", "status", "--quiet", working_copy],
                      "diff": ["svn", "diff", working_copy],
-                     "revert": ["svn", "revert", "-R", working_copy],
-                     "wipe": ["rm", "-R", working_copy]}
+                     "revert": ["svn", "revert", "-R", working_copy]}
     try:
         cmd = action_to_cmd[action]
     except KeyError:
