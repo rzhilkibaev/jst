@@ -26,17 +26,22 @@ def execute(action, args, ctx):
 def _init(buildomatic_dir, ctx):
     """ configures build system and application (set database properties, etc...) """
 
-    subprocess.call(["rm", "-R", ctx["src"]["working_copy_ce"]])
-    _execute_svn_action("checkout", ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
-
-    subprocess.call(["rm", "-R", ctx["src"]["working_copy_ce"]])
-    _execute_svn_action("checkout", ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
+    _clean_checkout(ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
+    _clean_checkout(ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
 
     _write_default_master_properties(buildomatic_dir, ctx)
 
     _build(buildomatic_dir)
 
     _write_maven_settings_xml(buildomatic_dir, ctx)
+
+
+
+def _clean_checkout(url, working_copy):
+    if (os.path.exists(working_copy)):
+        subprocess.call(["rm", "-R", working_copy])
+
+    _execute_svn_action("checkout", url, working_copy)
 
 
 
