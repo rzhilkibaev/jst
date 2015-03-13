@@ -57,6 +57,7 @@ def _init(ctx):
 def _show_status(ctx):
     catalina_main_class_arg = "org.apache.catalina.startup.Bootstrap"
     catalina_home_arg = "-Dcatalina.home=" + ctx["tc"]["home"]
+    tomcat_found = False
 
     for proc in psutil.process_iter():
         if proc.name == "java" \
@@ -65,7 +66,10 @@ def _show_status(ctx):
             http_port = _get_http_port(proc.cmdline)
             debug_port = _get_debug_port(proc.cmdline)
             print("pid=" + str(proc.pid) + ", port.http=" + str(http_port) + ", port.jdwp=" + str(debug_port))
+            tomcat_found = True
 
+    if (not tomcat_found):
+        print("tomcat is down")
 
 
 def _get_http_port(catalina_args):
