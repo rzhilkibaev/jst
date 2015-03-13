@@ -1,6 +1,6 @@
 # jst
 
-Manages jrs instances.
+Manages jrs sources/instances.
 
 ## Installation
 
@@ -8,4 +8,4 @@ Clone into any folder then run ``sudo jst/bin/install``
 
 ## Usage
 
-    jrs -h
+    jst -h
