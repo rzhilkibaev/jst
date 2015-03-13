@@ -24,7 +24,7 @@ def execute(action, args, ctx):
         _show_status(ctx)
     elif action == "go":
         _go(ctx)
-    elif action == "deploy":
+    elif action in ["deploy", "redeploy"]:
         _deploy(args, ctx)
     elif action == "restart":
         _execute_catalina_action("stop", ctx)
