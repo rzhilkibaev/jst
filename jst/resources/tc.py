@@ -43,11 +43,13 @@ def _init(ctx):
     tomcat_distribution_file = ctx["core"]["download_cache"] + "/" + basename(ctx["tc"]["distribution_url"])
 
     if (not os.path.isfile(tomcat_distribution_file)):
+        print("Downloading tomcat from " + ctx["tc"]["distribution_url"])
         tomcat_distribution_file = urllib.request.urlretrieve(ctx["tc"]["distribution_url"], tomcat_distribution_file)[0]
 
     if (not os.path.exists(ctx["tc"]["home"])):
         os.makedirs(ctx["tc"]["home"])
 
+    print("Extracting tomcat into " + ctx["tc"]["home"])
     subprocess.call(["tar", "-xf", tomcat_distribution_file, "-C", ctx["tc"]["home"], "--strip-components=1"])
 
     dir_util.copy_tree(ctx["core"]["templates"] + "/tomcat", ctx["tc"]["home"])
