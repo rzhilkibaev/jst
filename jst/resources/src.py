@@ -31,8 +31,6 @@ def _init(buildomatic_dir, ctx):
 
     _write_default_master_properties(buildomatic_dir, ctx)
 
-    _build(ctx, buildomatic_dir)
-
     _write_maven_settings_xml(buildomatic_dir, ctx)
 
 
