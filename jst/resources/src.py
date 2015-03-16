@@ -76,6 +76,7 @@ def _build(ctx, buildomatic_dir, args = []):
 
 
 def _write_maven_settings_xml(buildomatic_dir, ctx):
+    print("Creating maven-settings.xml")
     jst_xml = buildomatic_dir + "/jst.xml"
     if (not os.path.isfile(jst_xml)):
         shutil.copy(ctx["core"]["templates"] + "/jst.xml", jst_xml)
