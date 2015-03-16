@@ -111,7 +111,7 @@ def _execute_svn_action(action, url, working_copy):
     """ executes shell one-liner """
     action_to_cmd = {"checkout": ["svn", "checkout", url, working_copy],
                      "update": ["svn", "update", working_copy],
-                     "status": ["svn", "status", "--quiet", working_copy],
+                     "status": ["svn", "status", working_copy],
                      "diff": ["svn", "diff", working_copy],
                      "revert": ["svn", "revert", "-R", working_copy]}
     try:
