@@ -28,7 +28,7 @@ def _ensure_core_properties(ctx):
 
 
 
-def load(args):
+def load(options):
     ctx = configparser.ConfigParser()
 
     _ensure_core_properties(ctx)
@@ -36,7 +36,7 @@ def load(args):
     _load_user_properties(ctx)
     _load_workspace_properties(ctx)
 
-    _ensure_all_properties(ctx, args)
+    _ensure_all_properties(ctx, options)
 
     return ctx
 
@@ -74,7 +74,7 @@ def _load_properties(file, ctx):
 
 
 
-def _ensure_all_properties(ctx, args):
+def _ensure_all_properties(ctx, options):
 
     # src
     _ensure_property(ctx, "src", "user", "anonymous")
@@ -99,10 +99,9 @@ def _ensure_all_properties(ctx, args):
 
     _ensure_property(ctx, "src", "skip_tests", "false")
 
-    action_args = args['<args>']
-    if (("--skip-tests=true" in action_args) or ("--skip-tests" in action_args)):
+    if (("--skip-tests=true" in options) or ("--skip-tests" in options)):
         ctx["src"]["skip_tests"] = "true"
-    elif ("--skip-tests=false" in action_args):
+    elif ("--skip-tests=false" in options):
         ctx["src"]["skip_tests"] = "false"
 
     # tc
@@ -133,7 +132,7 @@ def _ensure_property(ctx, section, prop, default = None):
 
 
 
-def _show_context(ctx):
+def show_context(ctx, options):
 
     print("src.url_ce  = " + ctx["src"]["url_ce"])
     print("src.url_pro = " + ctx["src"]["url_pro"])
@@ -145,12 +144,6 @@ def _show_context(ctx):
     print("tc.home = " + ctx["tc"]["home"])
     print("tc.catalina_opts = " + ctx["tc"]["catalina_opts"])
     print("tc.java_opts = " + ctx["tc"]["java_opts"])
-
-
-
-def execute(action, args, ctx):
-    if (action == "show"):
-        _show_context(ctx)
 
 
 

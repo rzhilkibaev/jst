@@ -11,11 +11,8 @@ import subprocess
 def execute(action, args, ctx):
     """ executes an action against ce and pro source trees """
 
-    buildomatic_dir = ctx["src"]["working_copy_ce"] + "/buildomatic"
-
-    if action == "init":
-        _init(buildomatic_dir, ctx)
-    elif action in ["build", "rebuild"]:
+    if action in ["build", "rebuild"]:
+        buildomatic_dir = ctx["src"]["working_copy_ce"] + "/buildomatic"
         _build(ctx, buildomatic_dir, args)
     else:
         _execute_svn_action(action, ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
@@ -23,11 +20,13 @@ def execute(action, args, ctx):
 
 
 
-def _init(buildomatic_dir, ctx):
+def init(ctx):
     """ configures build system and application (set database properties, etc...) """
 
     _clean_checkout(ctx["src"]["url_ce"], ctx["src"]["working_copy_ce"])
     _clean_checkout(ctx["src"]["url_pro"], ctx["src"]["working_copy_pro"])
+
+    buildomatic_dir = ctx["src"]["working_copy_ce"] + "/buildomatic"
 
     _write_default_master_properties(buildomatic_dir, ctx)
 

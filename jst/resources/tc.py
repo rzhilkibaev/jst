@@ -15,48 +15,7 @@ from time import sleep
 import urllib.request
 
 
-def execute(action, args, ctx):
-    """ executes an action against a tomcat instance """
-
-    if action == "init":
-        _init(ctx)
-    elif action == "status":
-        _show_status(ctx)
-    elif action == "go":
-        _go(ctx)
-    elif action in ["deploy", "redeploy"]:
-        _deploy(args, ctx)
-    elif action == "restart":
-        _execute_catalina_action("stop", ctx)
-        sleep(6)
-        _execute_catalina_action("start", ctx)
-        _show_status(ctx)
-    elif action == "start":
-        _execute_catalina_action(action, ctx)
-        _show_status(ctx)
-    else:
-        _execute_catalina_action(action, ctx)
-
-
-
-def _init(ctx):
-    tomcat_distribution_file = ctx["core"]["download_cache"] + "/" + basename(ctx["tc"]["distribution_url"])
-
-    if (not os.path.isfile(tomcat_distribution_file)):
-        print("Downloading tomcat from " + ctx["tc"]["distribution_url"])
-        tomcat_distribution_file = urllib.request.urlretrieve(ctx["tc"]["distribution_url"], tomcat_distribution_file)[0]
-
-    if (not os.path.exists(ctx["tc"]["home"])):
-        os.makedirs(ctx["tc"]["home"])
-
-    print("Extracting tomcat into " + ctx["tc"]["home"])
-    subprocess.call(["tar", "-xf", tomcat_distribution_file, "-C", ctx["tc"]["home"], "--strip-components=1"])
-
-    dir_util.copy_tree(ctx["core"]["templates"] + "/tomcat", ctx["tc"]["home"])
-
-
-
-def _show_status(ctx):
+def status(ctx, options):
     catalina_main_class_arg = "org.apache.catalina.startup.Bootstrap"
     catalina_home_arg = "-Dcatalina.home=" + ctx["tc"]["home"]
     tomcat_found = False
@@ -72,6 +31,52 @@ def _show_status(ctx):
 
     if (not tomcat_found):
         print("tomcat is down")
+
+
+
+def start(ctx, options):
+    _execute_catalina_action("start", ctx)
+    status(ctx, options)
+
+
+
+def stop(ctx, options):
+    _execute_catalina_action("stop", ctx)
+
+
+
+def restart(ctx, options):
+    _execute_catalina_action("stop", ctx)
+    sleep(6)
+    _execute_catalina_action("start", ctx)
+    status(ctx, options)
+
+
+
+def go(ctx, options):
+    match = re.search("-Dport\.http=(\d*)", ctx["tc"]["java_opts"])
+    if match:
+        http_port = match.group(1)
+        subprocess.call(["xdg-open", "http://localhost:" + http_port + "/jasperserver-pro"],
+                        stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+
+
+
+def init(ctx):
+    tomcat_distribution_file = ctx["core"]["download_cache"] + "/" + basename(ctx["tc"]["distribution_url"])
+
+    if (not os.path.isfile(tomcat_distribution_file)):
+        print("Downloading tomcat from " + ctx["tc"]["distribution_url"])
+        tomcat_distribution_file = urllib.request.urlretrieve(ctx["tc"]["distribution_url"], tomcat_distribution_file)[0]
+
+    if (not os.path.exists(ctx["tc"]["home"])):
+        os.makedirs(ctx["tc"]["home"])
+        print("Extracting tomcat into " + ctx["tc"]["home"])
+        subprocess.call(["tar", "-xf", tomcat_distribution_file, "-C", ctx["tc"]["home"], "--strip-components=1"])
+
+        dir_util.copy_tree(ctx["core"]["templates"] + "/tomcat", ctx["tc"]["home"])
+    else:
+        print("Already initialized")
 
 
 def _get_http_port(catalina_args):
@@ -90,16 +95,7 @@ def _get_debug_port(catalina_args):
 
 
 
-def _go(ctx):
-    match = re.search("-Dport\.http=(\d*)", ctx["tc"]["java_opts"])
-    if match:
-        http_port = match.group(1)
-        subprocess.call(["xdg-open", "http://localhost:" + http_port + "/jasperserver-pro"],
-                        stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
-
-
-
-def _deploy(args, ctx):
+def deploy(ctx, args):
 
     if len(args) == 0:
         build_xml = ctx["src"]["working_copy_ce"] + "/buildomatic/build.xml"
