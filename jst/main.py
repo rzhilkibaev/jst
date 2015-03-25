@@ -6,16 +6,25 @@ This tool manages jrs instances.
 
 Options:
   -h --help           This help text
+  --skip-tests=<val>        Skip test while running maven build [default: true]
+  --dir=<directory>
+  --flavor=<flavor>
     
 Commands:
   init                Initialize context and tomcat
+  deploy              Deploy to tomcat
   status              Tomcat status
+  start               Start tomcat
+  stop                Stop tomcat
+  restart             Restart tomcat
+  go                  Open jrs in browser
   svn-status          Svn status
-  ctx-status          Context info
   checkout            svn checkout
   update              svn update
   diff                svn diff
   revert              svn revert
+  ctx-status          Context info
+  build               Build
 """
 
 from docopt import docopt
@@ -37,9 +46,8 @@ if __name__ == "__main__":
     args = docopt(__doc__, version = "0.1")
 
     command = args["<command>"]
-    options = []
 
-    ctx = context.load(options)
+    ctx = context.load(args)
 
     commands = {
               "init": init,
@@ -62,4 +70,4 @@ if __name__ == "__main__":
               "build": ant.build,
               }
 
-    commands[command](ctx, options)
+    commands[command](ctx, args)
