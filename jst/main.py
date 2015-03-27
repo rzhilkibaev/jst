@@ -7,8 +7,8 @@ This tool manages jrs instances.
 Options:
   -h --help           This help text
   --skip-tests=<val>        Skip test while running maven build [default: true]
-  --dir=<directory>
-  --flavor=<flavor>
+  --dir=<directory>   Directory where the project is located
+  --edition=<edition> ce or pro
     
 Commands:
   init                Initialize context and tomcat

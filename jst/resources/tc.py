@@ -97,11 +97,9 @@ def _get_debug_port(catalina_args):
 
 def deploy(ctx, args):
 
-    if len(args) == 0:
-        build_xml = ctx["src"]["working_copy_ce"] + "/buildomatic/build.xml"
-        subprocess.call(["ant", "-buildfile", build_xml, "deploy-webapp-pro"])
-    else:
-        edition = args[0]
+    dir_name = args.get("--dir")
+    edition = args.get("--edition")
+    if (dir_name):
         source = ctx["src"]["working_copy_" + edition] + "/" + args[1] + "/target/*.jar"
         files = glob.glob(source)
         destination = ctx["tc"]["home"] + "/webapps/jasperserver-pro/WEB-INF/lib/"
@@ -110,6 +108,9 @@ def deploy(ctx, args):
             print(files[0])
         else:
             print("nothing to copy at: " + source)
+    else:
+        build_xml = ctx["src"]["working_copy_ce"] + "/buildomatic/build.xml"
+        subprocess.call(["ant", "-buildfile", build_xml, "deploy-webapp-pro"])
 
 
 

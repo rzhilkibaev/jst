@@ -19,9 +19,9 @@ def build(ctx, options):
         skip_tests_arg = "-DSKIP_TEST_ARG=skipTests"
 
     dir_name = options.get("--dir")
-    flavor = options.get("--flavor")
+    edition = options.get("--edition")
     if (dir_name):
-        ant_target = "build-dir-" + flavor # ce/pro
+        ant_target = "build-dir-" + edition # ce/pro
         subprocess.call(["ant", skip_tests_arg, "-buildfile", buildomatic_dir + "/build.xml", ant_target, "-DdirName=" + dir_name])
     else:
         subprocess.call(["ant", skip_tests_arg, "-buildfile", buildomatic_dir + "/build.xml", "build-src-all"])
