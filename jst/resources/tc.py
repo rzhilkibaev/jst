@@ -100,7 +100,7 @@ def deploy(ctx, args):
     dir_name = args.get("--dir")
     edition = args.get("--edition")
     if (dir_name):
-        source = ctx["src"]["working_copy_" + edition] + "/" + args[1] + "/target/*.jar"
+        source = ctx["src"]["working_copy_" + edition] + "/" + dir_name + "/target/*.jar"
         files = glob.glob(source)
         destination = ctx["tc"]["home"] + "/webapps/jasperserver-pro/WEB-INF/lib/"
         if (len(files)):
