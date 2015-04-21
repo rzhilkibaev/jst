@@ -28,6 +28,7 @@ Commands:
 """
 
 from docopt import docopt
+import time
 
 from resources import context, ant
 from resources import src
@@ -70,4 +71,8 @@ if __name__ == "__main__":
               "build": ant.build,
               }
 
+    start_time = time.strftime("%I:%M:%S %p")
+
     commands[command](ctx, args)
+
+    print("Start/end time: " + start_time + " - " + time.strftime("%I:%M:%S %p"))
