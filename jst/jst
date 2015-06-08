@@ -3,7 +3,7 @@
 Usage: 
        jst init SVN_USER BRANCH_CE BRANCH_PRO
        jst (build|deploy|bd) [DIR]
-       jst (start|stop|restart|ps|go|status|update|diff|revert)
+       jst (start|stop|restart|ps|log|go|status|update|diff|revert)
        jst svn SVN_ARGS...
        
 Commands:
@@ -15,6 +15,7 @@ Commands:
     stop        stop tomcat
     restart     restart tomcat
     ps          show tomcat process info
+    log         print tomcat catalina.out
     go          open app in default web browser 
     status      run 'svn status' against both source trees
     update      run 'svn update' against both source trees
@@ -65,6 +66,8 @@ def main(args):
         cmd_start()
     elif (args["ps"]):
         cmd_ps()
+    elif (args["log"]):
+        cmd_log()
     # svn commands
     elif (args["status"]):
         run_svn_command(["status"])
@@ -161,6 +164,11 @@ def cmd_ps():
         print("pid(s): " + ", ".join(pids))
     else:
         print("tomcat is down")
+
+
+def cmd_log():
+    with open(tomcat_home + "/logs/catalina.out", 'r') as fin:
+        print(fin.read())
 
 
 def cmd_revert():
