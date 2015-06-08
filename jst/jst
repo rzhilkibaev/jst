@@ -84,7 +84,6 @@ def main(args):
 
 def cmd_init(svn_user, branch_ce, branch_pro):
     """checkout source and configure buildomatic"""
-    print(svn_user, branch_ce, branch_pro)
     checkout(svn_user, branch_ce, branch_pro)
     configure_buildomatic()
 
