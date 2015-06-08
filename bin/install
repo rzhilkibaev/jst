@@ -14,5 +14,7 @@ done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 ln -s "$DIR/../jst/jst" /usr/local/bin/jst
-
 echo "Created symlink /usr/local/bin/jst"
+
+ln -s "$DIR/jst_bash_completion" /etc/bash_completion.d/jst
+echo "Created symlink /etc/bash_completion.d/jst"
