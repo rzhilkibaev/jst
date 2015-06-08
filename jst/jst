@@ -33,6 +33,7 @@ import glob
 import os
 import psutil
 import shutil
+import socket
 import subprocess
 import sys
 import textwrap
@@ -135,6 +136,7 @@ def cmd_start():
         cmd_ps()
         return
 
+    check_db()
     execute_catalina_action("start")
     cmd_ps()
 
@@ -266,6 +268,15 @@ def progress(count, blockSize, totalSize):
 
 def execute_catalina_action(action):
     subprocess.call([tomcat_home + "/bin/catalina.sh", action])
+
+
+def check_db():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result = s.connect_ex(("localhost", 5432))
+    if (result != 0):
+        raise IOError("DB is down")
+
+    s.close()
 
 
 tomcat_home = os.getcwd() + "/tomcat"
