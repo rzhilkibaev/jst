@@ -111,9 +111,11 @@ def cmd_build(directory):
     subprocess.call(args)
 
 def cmd_deploy(directory):
-    if (directory.endswith("/")):
-        directory = directory[:-1]
     if (directory):
+
+        if (directory.endswith("/")):
+            directory = directory[:-1]
+
         source = os.getcwd() + "/" + directory + "/target/*.jar"
         files = glob.glob(source)
         destination = tomcat_home + "/webapps/jasperserver-pro/WEB-INF/lib/"
