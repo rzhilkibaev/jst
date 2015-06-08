@@ -90,9 +90,7 @@ def cmd_init(svn_user, branch_ce, branch_pro):
 
 
 def cmd_build(directory):
-    download_tomcat()
-    extract_tomcat()
-    configure_tomcat()
+    ensure_tomcat()
     args = ["ant", "-DSKIP_TEST_ARG=skipTests", "-buildfile", ce_dir + "/buildomatic/build.xml"]
 
     if (directory):
@@ -111,7 +109,9 @@ def cmd_build(directory):
 
     subprocess.call(args)
 
+
 def cmd_deploy(directory):
+    ensure_tomcat()
     if (directory):
 
         if (directory.endswith("/")):
@@ -236,6 +236,12 @@ def configure_buildomatic():
             js-path = {1}
             js-pro-path = {2}
         """).strip().format(tomcat_home, ce_dir, pro_dir))
+
+
+def ensure_tomcat():
+    download_tomcat()
+    extract_tomcat()
+    configure_tomcat()
 
 
 def download_tomcat():
