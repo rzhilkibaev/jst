@@ -66,11 +66,11 @@ def main(args):
         cmd_ps()
     # svn commands
     elif (args["status"]):
-        run_svn_command("status")
+        run_svn_command(["status"])
     elif (args["update"]):
-        run_svn_command("update")
+        run_svn_command(["update"])
     elif (args["diff"]):
-        run_svn_command("diff")
+        run_svn_command(["diff"])
     elif (args["revert"]):
         cmd_revert()
     elif (args["svn"]):
@@ -89,13 +89,16 @@ def cmd_init(svn_user, branch_ce, branch_pro):
 
 
 def cmd_build(directory):
-    if (directory.endswith("/")):
-        directory = directory[:-1]
     download_tomcat()
     extract_tomcat()
     configure_tomcat()
     args = ["ant", "-DSKIP_TEST_ARG=skipTests", "-buildfile", ce_dir + "/buildomatic/build.xml"]
+
     if (directory):
+
+        if (directory.endswith("/")):
+            directory = directory[:-1]
+
         if (directory.startswith("ce/")):
             args += ["build-dir-ce", "-DdirName=" + directory[3:]]
         elif (directory.startswith("pro/")):
