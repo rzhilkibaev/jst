@@ -241,8 +241,9 @@ def configure_buildomatic():
 def download_tomcat():
     distribution_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
     if (not os.path.isfile(tomcat_distribution_file)):
+        os.makedirs(os.path.dirname(tomcat_distribution_file))
         print("Downloading tomcat " + _tomcat_ver + " from " + distribution_url)
-        urllib.request.urlretrieve(distribution_url, tomcat_distribution_file, progress)
+        urllib.request.urlretrieve(distribution_url, tomcat_distribution_file, print_progress)
         print()
 
 
@@ -260,7 +261,7 @@ def configure_tomcat():
         """).strip().format(tomcat_home))
 
 
-def progress(count, blockSize, totalSize):
+def print_progress(count, blockSize, totalSize):
     percent = int(count * blockSize * 100 / totalSize)
     sys.stdout.write("\r%3d%%" % percent)
     sys.stdout.flush()
@@ -280,7 +281,7 @@ def check_db():
 
 
 tomcat_home = os.getcwd() + "/tomcat"
-tomcat_distribution_file = os.path.expanduser("~") + "/.jst/download_cache/apache-tomcat-" + _tomcat_ver + ".tar.gz"
+tomcat_distribution_file = os.path.expanduser("~") + "/.cache/jst/apache-tomcat-" + _tomcat_ver + ".tar.gz"
 ce_dir = os.getcwd() + "/ce"
 pro_dir = os.getcwd() + "/pro"
 
