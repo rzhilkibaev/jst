@@ -10,4 +10,4 @@ _jst()
     COMPREPLY=( $(compgen -W "${_script_commands}" -- ${cur}) )
     return 0
 }
-complete -o nospace -F _jst jst
+complete -o nospace -o plusdirs -F _jst jst
