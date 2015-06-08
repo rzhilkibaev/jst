@@ -1,0 +1,279 @@
+#!/usr/bin/env python3
+"""
+Usage: 
+       jst init SVN_USER BRANCH_CE BRANCH_PRO
+       jst (build|deploy|bd) [DIR]
+       jst (start|stop|restart|ps|go|status|update|diff|revert)
+       jst svn SVN_ARGS...
+       
+Commands:
+    init        checkout ce and pro source code and configure buildomatic
+    build       build jrs
+    deploy      deploy jrs to tomcat
+    bd          run build and deploy in one command
+    start       start tomcat 
+    stop        stop tomcat
+    restart     restart tomcat
+    ps          show tomcat process info
+    go          open app in default web browser 
+    status      run 'svn status' against both source trees
+    update      run 'svn update' against both source trees
+    diff        run 'svn diff' against source trees
+    revert      run 'svn revert -R' against both source trees
+    svn         run arbitrary svn command against both source trees
+    
+Examples:
+    jst init anonymous branches/bugfix branches/bugfix-pro
+    jst init anonymous trunk trunk
+    jst build ce/jasperserver-war
+"""
+
+import docopt
+import glob
+import os
+import psutil
+import shutil
+import subprocess
+import sys
+import textwrap
+import time
+import traceback
+import urllib.request
+
+
+_tomcat_ver = "7.0.62"
+
+def main(args):
+    # buildomatic commands
+    if (args["init"]):
+        cmd_init(args["SVN_USER"], args["BRANCH_CE"], args["BRANCH_PRO"])
+    elif (args["build"]):
+        cmd_build(args["DIR"])
+    elif (args["deploy"]):
+        cmd_deploy(args["DIR"])
+    elif (args["bd"]):
+        cmd_build(args["DIR"])
+        cmd_deploy(args["DIR"])
+    # tomcat commands
+    elif (args["start"]):
+        cmd_start()
+    elif (args["stop"]):
+        cmd_stop()
+    elif (args["restart"]):
+        cmd_stop()
+        cmd_start()
+    elif (args["ps"]):
+        cmd_ps()
+    # svn commands
+    elif (args["status"]):
+        run_svn_command("status")
+    elif (args["update"]):
+        run_svn_command("update")
+    elif (args["diff"]):
+        run_svn_command("diff")
+    elif (args["revert"]):
+        cmd_revert()
+    elif (args["svn"]):
+        run_svn_command(args["SVN_ARGS"])
+    # misc commands
+    elif (args["go"]):
+        cmd_go()
+    else:
+        raise ValueError("Unknown arguments:\n" + str(args))
+
+
+def cmd_init(svn_user, branch_ce, branch_pro):
+    """checkout source and configure buildomatic"""
+    print(svn_user, branch_ce, branch_pro)
+    checkout(svn_user, branch_ce, branch_pro)
+    configure_buildomatic()
+
+
+def cmd_build(directory):
+    if (directory.endswith("/")):
+        directory = directory[:-1]
+    download_tomcat()
+    extract_tomcat()
+    configure_tomcat()
+    args = ["ant", "-DSKIP_TEST_ARG=skipTests", "-buildfile", ce_dir + "/buildomatic/build.xml"]
+    if (directory):
+        if (directory.startswith("ce/")):
+            args += ["build-dir-ce", "-DdirName=" + directory[3:]]
+        elif (directory.startswith("pro/")):
+            args += ["build-dir-pro", "-DdirName=" + directory[4:]]
+        else:
+            raise ValueError("Unknown directory: " + directory)
+    else:
+        args += ["build-src-all"]
+
+    subprocess.call(args)
+
+def cmd_deploy(directory):
+    if (directory.endswith("/")):
+        directory = directory[:-1]
+    if (directory):
+        source = os.getcwd() + "/" + directory + "/target/*.jar"
+        files = glob.glob(source)
+        destination = tomcat_home + "/webapps/jasperserver-pro/WEB-INF/lib/"
+        if (len(files)):
+            shutil.copy(files[0], destination)
+            print("Deployed: " + files[0])
+        else:
+            raise IOError("Nothing to deploy at: " + source)
+    else:
+        args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml", "deploy-webapp-pro"]
+        subprocess.call(args)
+
+
+def cmd_start():
+    pids = get_tomcat_pids()
+    if (pids):
+        cmd_ps()
+        return
+
+    execute_catalina_action("start")
+    cmd_ps()
+
+
+def cmd_stop():
+    pids = get_tomcat_pids()
+    if (pids):
+        stop_gracefully(10)
+        pids = get_tomcat_pids()
+        if (pids):
+            print("Unable to stop gracefully")
+            for pid in pids:
+                print("Sending SIGTERM to " + pid)
+                subprocess.call(["kill", "-KILL", pid])
+
+    cmd_ps()
+
+
+def cmd_ps():
+    pids = get_tomcat_pids()
+    if (pids):
+        print("pid(s): " + ", ".join(pids))
+    else:
+        print("tomcat is down")
+
+
+def cmd_revert():
+    subprocess.call(["svn", "revert", ce_dir, "-R"])
+    subprocess.call(["svn", "revert", pro_dir, "-R"])
+
+
+def cmd_go():
+    pids = get_tomcat_pids()
+    if (pids):
+        subprocess.call(["xdg-open", "http://localhost:8080/jasperserver-pro"],
+                        stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+    else:
+        cmd_ps()
+
+
+def run_svn_command(svn_args):
+    subprocess.call(["svn"] + svn_args + [ce_dir])
+    subprocess.call(["svn"] + svn_args + [pro_dir])
+
+
+def stop_gracefully(timeout):
+    execute_catalina_action("stop")
+    sys.stdout.write("Waiting for tomcat to stop")
+    sys.stdout.flush()
+    elapsed = 0 # number of seconds since shutdown initiated
+    while (get_tomcat_pids() and elapsed <= timeout):
+        time.sleep(1)
+        elapsed += 1
+        sys.stdout.write(".")
+        sys.stdout.flush()
+
+    print()
+
+
+def get_tomcat_pids():
+    catalina_main_class_arg = "org.apache.catalina.startup.Bootstrap"
+    catalina_home_arg = "-Dcatalina.home=" + tomcat_home
+    pids = []
+
+    for proc in psutil.process_iter():
+        if (proc.name == "java" \
+                and catalina_main_class_arg in proc.cmdline \
+                and catalina_home_arg in proc.cmdline):
+            pids.append(str(proc.pid))
+            # keep looking, might be multiple instances running
+
+    return pids
+
+
+def checkout(svn_user, branch_ce, branch_pro):
+    """checkout source"""
+    svn_url_prefix = "https://" + svn_user + "@svnserver.jaspersoft.com/jasperserver"
+    subprocess.call(["svn", "checkout", svn_url_prefix + "/" + branch_ce, "ce"])
+    subprocess.call(["svn", "checkout", svn_url_prefix + "-pro/" + branch_pro, "pro"])
+
+
+def configure_buildomatic():
+    """writes default_master.properties file"""
+    with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
+        f.write(textwrap.dedent("""
+            appServerType = tomcat7
+            appServerDir = {0}
+            
+            dbType=postgresql
+            dbHost=localhost
+            dbUsername=postgres
+            dbPassword=postgres
+            
+            maven = /usr/local/maven/bin/mvn
+            mvn-mirror=http://mvnrepo.jaspersoft.com:8081/artifactory/repo
+            
+            js-path = {1}
+            js-pro-path = {2}
+        """).strip().format(tomcat_home, ce_dir, pro_dir))
+
+
+def download_tomcat():
+    distribution_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
+    if (not os.path.isfile(tomcat_distribution_file)):
+        print("Downloading tomcat " + _tomcat_ver + " from " + distribution_url)
+        urllib.request.urlretrieve(distribution_url, tomcat_distribution_file, progress)
+        print()
+
+
+def extract_tomcat():
+    if (not os.path.isdir(tomcat_home)):
+        os.makedirs(tomcat_home)
+        print("Extracting tomcat into " + tomcat_home)
+        subprocess.call(["tar", "-xf", tomcat_distribution_file, "-C", tomcat_home, "--strip-components=1"])
+
+
+def configure_tomcat():
+    with open(tomcat_home + "/bin/setenv.sh", "w") as f:
+        f.write(textwrap.dedent("""
+            export CATALINA_OPTS="-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
+        """).strip().format(tomcat_home))
+
+
+def progress(count, blockSize, totalSize):
+    percent = int(count * blockSize * 100 / totalSize)
+    sys.stdout.write("\r%3d%%" % percent)
+    sys.stdout.flush()
+
+
+def execute_catalina_action(action):
+    subprocess.call([tomcat_home + "/bin/catalina.sh", action])
+
+
+tomcat_home = os.getcwd() + "/tomcat"
+tomcat_distribution_file = os.path.expanduser("~") + "/.jst/download_cache/apache-tomcat-" + _tomcat_ver + ".tar.gz"
+ce_dir = os.getcwd() + "/ce"
+pro_dir = os.getcwd() + "/pro"
+
+if (__name__ == "__main__"):
+
+    args = docopt.docopt(__doc__, version = "0.1")
+
+    try:
+        main(args)
+    except:
+        traceback.print_exc()

@@ -1,6 +1,6 @@
 # jst
 
-Manages jrs sources/instances.
+Manages jrs
 
 ## Installation
 
