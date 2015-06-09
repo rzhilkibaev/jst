@@ -282,7 +282,8 @@ def print_progress(count, blockSize, totalSize):
 
 
 def execute_catalina_action(action):
-    subprocess.call([tomcat_home + "/bin/catalina.sh", action])
+    subprocess.call([tomcat_home + "/bin/catalina.sh", action],
+                    stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
 
 
 def check_db():
