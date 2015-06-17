@@ -147,7 +147,7 @@ def cmd_start():
 def cmd_stop():
     pids = get_tomcat_pids()
     if (pids):
-        stop_gracefully(10)
+        stop_gracefully(30)
         pids = get_tomcat_pids()
         if (pids):
             print("Unable to stop gracefully")
