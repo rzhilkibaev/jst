@@ -152,8 +152,8 @@ def cmd_stop():
         if (pids):
             print("Unable to stop gracefully")
             for pid in pids:
-                print("Sending SIGTERM to " + pid)
-                subprocess.call(["kill", "-KILL", pid])
+                print("killing process with pid " + pid)
+                psutil.Process(int(pid)).kill()
 
     cmd_ps()
 
