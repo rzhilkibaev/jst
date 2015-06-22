@@ -2,15 +2,16 @@
 """
 Usage: 
        jst init SVN_USER BRANCH_CE BRANCH_PRO
-       jst (build|deploy|bd) [DIR]
+       jst (build|bd) [DIR] [--test]
+       jst deploy [DIR]
        jst (start|stop|restart|ps|log|go|status|update|diff|revert)
        jst svn SVN_ARGS...
        
 Commands:
     init        checkout ce and pro source code and configure buildomatic
-    build       build jrs
+    build       build jrs (run tests if --test is specified)
     deploy      deploy jrs to tomcat
-    bd          run build and deploy in one command
+    bd          run build and deploy in one command (run tests if --test is specified)
     start       start tomcat 
     stop        stop tomcat
     restart     restart tomcat
@@ -50,11 +51,11 @@ def main(args):
     if (args["init"]):
         cmd_init(args["SVN_USER"], args["BRANCH_CE"], args["BRANCH_PRO"])
     elif (args["build"]):
-        cmd_build(args["DIR"])
+        cmd_build(args["DIR"], args["--test"])
     elif (args["deploy"]):
         cmd_deploy(args["DIR"])
     elif (args["bd"]):
-        cmd_build(args["DIR"])
+        cmd_build(args["DIR"], args["--test"])
         cmd_deploy(args["DIR"])
     # tomcat commands
     elif (args["start"]):
@@ -92,9 +93,9 @@ def cmd_init(svn_user, branch_ce, branch_pro):
     configure_buildomatic()
 
 
-def cmd_build(directory):
+def cmd_build(directory, run_tests):
     ensure_tomcat()
-    args = ["ant", "-DSKIP_TEST_ARG=skipTests", "-buildfile", ce_dir + "/buildomatic/build.xml"]
+    args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml"]
 
     if (directory):
 
@@ -109,6 +110,9 @@ def cmd_build(directory):
             raise ValueError("Unknown directory: " + directory)
     else:
         args += ["build-src-all"]
+
+    if (not run_tests):
+        args += ["-DSKIP_TEST_ARG=skipTests"]
 
     subprocess.call(args)
 
