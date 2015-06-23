@@ -31,6 +31,7 @@ Examples:
 """
 
 import docopt
+import fileinput
 import glob
 import os
 import psutil
@@ -91,6 +92,7 @@ def cmd_init(svn_user, branch_ce, branch_pro):
     """checkout source and configure buildomatic"""
     checkout(svn_user, branch_ce, branch_pro)
     configure_buildomatic()
+    tweak_buildomatic()
 
 
 def cmd_build(directory, run_tests):
@@ -249,6 +251,14 @@ def configure_buildomatic():
             js-pro-path = {2}
         """).strip().format(tomcat_home, ce_dir, pro_dir))
 
+
+def tweak_buildomatic():
+    """makes maven install sources into local repository"""
+    searchString = '<arg value="clean"/>'
+    for line in fileinput.input(ce_dir + "/buildomatic/bin/dev.xml", inplace = True):
+        if (line.strip() == searchString):
+            line = line.replace(searchString, searchString + '<arg value="source:jar-no-fork"/>')
+        print(line, end = "")
 
 def ensure_tomcat():
     download_tomcat()
