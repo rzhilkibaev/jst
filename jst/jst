@@ -41,7 +41,6 @@ import subprocess
 import sys
 import textwrap
 import time
-import traceback
 import urllib.request
 
 
@@ -134,10 +133,15 @@ def cmd_deploy(directory):
         source = os.getcwd() + "/" + directory + "/target/*.jar"
         files = glob.glob(source)
         destination = tomcat_home + "/webapps/jasperserver-pro/WEB-INF/lib/"
-        if (len(files)):
-            shutil.copy(files[0], destination)
-            print("Deployed: " + files[0])
-        else:
+        deployed = False
+
+        for file in files:
+            if (not file.endswith("sources.jar")):
+                shutil.copy(file, destination)
+                print("Deployed: " + file)
+                deployed = True
+
+        if (not deployed):
             raise IOError("Nothing to deploy at: " + source)
     else:
         args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml", "deploy-webapp-pro"]
