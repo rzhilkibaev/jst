@@ -48,9 +48,14 @@ import urllib.request
 _tomcat_ver = "7.0.62"
 
 def main(args):
-    # buildomatic commands
+
+    # check if we are in the right directory
+    if (not args["init"] and not args["go"]):
+        assert_initialized()
+
     if (args["init"]):
         cmd_init(args["SVN_USER"], args["BRANCH_CE"], args["BRANCH_PRO"])
+    # ant/buildomatic commands
     elif (args["build"]):
         cmd_build(args["DIR"], args["--test"])
     elif (args["deploy"]):
@@ -189,6 +194,11 @@ def cmd_go():
                         stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
     else:
         cmd_ps()
+
+
+def assert_initialized():
+    if (not os.path.isdir(ce_dir) or not os.path.isdir(pro_dir)):
+        raise IOError("Cannot find ce and pro directories. Did you run init?")
 
 
 def run_svn_command(svn_args):
