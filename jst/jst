@@ -151,7 +151,7 @@ def cmd_deploy(directory):
 def cmd_start():
     pids = get_tomcat_pids()
     if (pids):
-        cmd_ps()
+        print("Already running; pid(s): " + ", ".join(pids))
         return
 
     check_db()
