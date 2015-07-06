@@ -130,6 +130,9 @@ def cmd_deploy(directory):
         if (directory.endswith("/")):
             directory = directory[:-1]
 
+        if (directory.endswith("-war")):
+            raise ValueError("WAR deployment is not supported")
+
         source = os.getcwd() + "/" + directory + "/target/*.jar"
         files = glob.glob(source)
         destination = tomcat_home + "/webapps/jasperserver-pro/WEB-INF/lib/"
