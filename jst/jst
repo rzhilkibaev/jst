@@ -331,6 +331,16 @@ tomcat_distribution_file = os.path.expanduser("~") + "/.cache/jst/apache-tomcat-
 ce_dir = os.getcwd() + "/ce"
 pro_dir = os.getcwd() + "/pro"
 
+class color:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 if (__name__ == "__main__"):
 
     args = docopt.docopt(__doc__, version = "0.1")
@@ -338,5 +348,5 @@ if (__name__ == "__main__"):
     try:
         main(args)
     except Exception as e:
-        print(str(e))
+        print(color.FAIL + str(e) + color.ENDC)
         # traceback.print_exc()
