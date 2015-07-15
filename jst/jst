@@ -245,9 +245,16 @@ def get_tomcat_pids():
 def checkout(svn_user, branch_ce, branch_pro):
     """checkout source"""
     svn_url_prefix = "https://" + svn_user + "@svnserver.jaspersoft.com/jasperserver"
-    subprocess.call(["svn", "checkout", svn_url_prefix + "/" + branch_ce, "ce"])
-    subprocess.call(["svn", "checkout", svn_url_prefix + "-pro/" + branch_pro, "pro"])
+    subprocess.call(["svn", "checkout", svn_url_prefix + "/" + normalize_branch_name(branch_ce), "ce"])
+    subprocess.call(["svn", "checkout", svn_url_prefix + "-pro/" + normalize_branch_name(branch_pro), "pro"])
 
+
+def normalize_branch_name(branch):
+    """ensures that branch includes branches/ unless trunk"""
+    if (branch != "trunk" and not branch.startswith("branches/")):
+        return "branches/" + branch
+
+    return branch;
 
 def configure_buildomatic():
     """writes default_master.properties file"""
