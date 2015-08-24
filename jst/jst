@@ -105,8 +105,7 @@ def cmd_build(directory, run_tests):
 
     if (directory):
 
-        if (directory.endswith("/")):
-            directory = directory[:-1]
+        directory = format_path(directory)
 
         if (directory.startswith("ce/")):
             args += ["build-dir-ce", "-DdirName=" + directory[3:]]
@@ -127,8 +126,7 @@ def cmd_deploy(directory):
     ensure_tomcat()
     if (directory):
 
-        if (directory.endswith("/")):
-            directory = directory[:-1]
+        directory = format_path(directory)
 
         if (directory.endswith("-war")):
             raise ValueError("WAR deployment is not supported")
@@ -149,6 +147,12 @@ def cmd_deploy(directory):
     else:
         args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml", "deploy-webapp-pro"]
         subprocess.call(args)
+
+
+def format_path(directory):
+    if (directory.endswith("/")):
+        directory = directory[:-1]
+    return directory
 
 
 def cmd_start():
