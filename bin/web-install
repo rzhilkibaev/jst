@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+apt-get update && apt-get install python3-docopt python3-psutil
+
+wget https://github.com/rzhilkibaev/jst/raw/master/jst/jst -O /usr/local/bin/jst
+chmod +x /usr/local/bin/jst
+wget https://github.com/rzhilkibaev/jst/raw/master/bin/jst_bash_completion -O /etc/bash_completion.d/jst
