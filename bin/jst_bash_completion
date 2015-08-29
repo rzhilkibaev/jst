@@ -2,7 +2,7 @@
 
 _jst()
 {
-    _script_commands="init build deploy bd start stop restart ps log go status update diff revert svn -h --help"
+    _script_commands="init build deploy bd start stop restart ps log go status update diff revert svn configure init-db -h --help"
     
     local cur prev
     COMPREPLY=()

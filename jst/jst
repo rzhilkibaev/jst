@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Usage: 
-       jst init SVN_USER BRANCH_CE BRANCH_PRO
-       jst (build|bd) [DIR] [--test]
-       jst deploy [DIR]
-       jst (start|stop|restart|ps|log|go|status|update|diff|revert)
+       jst init SVN_USER BRANCH_CE BRANCH_PRO [--env=<env>]
+       jst (build|bd) [DIR] [--test] [--env=<env>]
+       jst deploy [DIR] [--env=<env>]
+       jst (start|stop|restart|ps|log|go|status|update|diff|revert|init-db) [--env=<env>]
        jst svn SVN_ARGS...
+       jst configure --db=<db> [--env=<env>]
        
 Commands:
     init        checkout ce and pro source code and configure buildomatic
@@ -23,6 +24,8 @@ Commands:
     diff        run 'svn diff' against source trees
     revert      run 'svn revert -R' against both source trees
     svn         run arbitrary svn command against both source trees
+    configure   change default_master.properties according to parameters
+    init-db     create jasperserver, foodmart and sugarcm databases
     
 Examples:
     jst init anonymous branches/bugfix branches/bugfix-pro
@@ -88,6 +91,10 @@ def main(args):
     # misc commands
     elif (args["go"]):
         cmd_go()
+    elif (args["configure"]):
+        cmd_configure(args["--db"])
+    elif (args["init-db"]):
+        cmd_init_db()
     else:
         raise ValueError("Unknown arguments:\n" + str(args))
 
@@ -95,8 +102,10 @@ def main(args):
 def cmd_init(svn_user, branch_ce, branch_pro):
     """checkout source and configure buildomatic"""
     checkout(svn_user, branch_ce, branch_pro)
-    configure_buildomatic()
-    tweak_buildomatic()
+    configure_buildomatic("pg") # postgres is default db
+    # only devs need sources so no need to tweak under any other environment
+    if (env == "dev"):
+        tweak_buildomatic_for_dev_env()
 
 
 def cmd_build(directory, run_tests):
@@ -207,6 +216,22 @@ def cmd_go():
         cmd_ps()
 
 
+def cmd_configure(db):
+    configure_buildomatic(db)
+
+
+def cmd_init_db():
+    subprocess.call(["ant",
+                     "create-js-db",
+                     "build-js-ddl-pro",
+                     "init-js-db-pro",
+                     "create-sugarcrm-db",
+                     "load-sugarcrm-db",
+                     "create-foodmart-db",
+                     "load-foodmart-db",
+                     "run-production-data-pro"], cwd = ce_dir + "/buildomatic")
+
+
 def assert_initialized():
     if (not os.path.isdir(ce_dir) or not os.path.isdir(pro_dir)):
         raise IOError("Cannot find ce and pro directories. Did you run init?")
@@ -260,27 +285,43 @@ def normalize_branch_name(branch):
 
     return branch;
 
-def configure_buildomatic():
+def configure_buildomatic(db):
     """writes default_master.properties file"""
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
-        f.write(textwrap.dedent("""
-            appServerType = tomcat7
-            appServerDir = {0}
-            
-            dbType=postgresql
-            dbHost=localhost
-            dbUsername=postgres
-            dbPassword=postgres
-            
-            maven = /usr/local/maven/bin/mvn
-            mvn-mirror=http://mvnrepo.jaspersoft.com:8081/artifactory/repo
-            
-            js-path = {1}
-            js-pro-path = {2}
-        """).strip().format(tomcat_home, ce_dir, pro_dir))
+        write_app_server_section(f)
+        write_db_section(f, db)
+        write_source_section(f)
 
 
-def tweak_buildomatic():
+def write_app_server_section(f):
+    f.write("appServerType = tomcat7\n")
+    f.write("appServerDir = " + tomcat_home + "\n")
+
+
+def write_db_section(f, db):
+    if (env == "dev"):
+        # devs run the app and the db on the same machine
+        db_host = "localhost"
+    else:
+        db_host = "db"
+
+    if (db == "pg"):
+        f.write("dbType = postgresql\n")
+        f.write("dbHost = " + db_host + "\n")
+        f.write("dbUsername = postgres\n")
+        f.write("dbPassword = postgres\n")
+    else:
+        raise ValueError("Unknown db type " + db)
+
+
+def write_source_section(f):
+    f.write("maven = /usr/local/maven/bin/mvn\n")
+    f.write("mvn-mirror=http://mvnrepo.jaspersoft.com:8081/artifactory/repo\n")
+    f.write("js-path = " + ce_dir + "\n")
+    f.write("js-pro-path = " + pro_dir + "\n")
+
+
+def tweak_buildomatic_for_dev_env():
     """makes maven install sources into local repository"""
     searchString = '<arg value="clean"/>'
     for line in fileinput.input(ce_dir + "/buildomatic/bin/dev.xml", inplace = True):
@@ -337,6 +378,17 @@ def check_db():
     s.close()
 
 
+def get_working_environment(args):
+    if (args["--env"]):
+        if (args["--env"] == "dev"):
+            return args["--env"]
+        else:
+            raise ValueError("Unknown environment " + args["--env"])
+    return "dev"
+
+
+# working environment (dev, ci)
+env = "dev"
 tomcat_home = os.getcwd() + "/tomcat"
 tomcat_distribution_file = os.path.expanduser("~") + "/.cache/jst/apache-tomcat-" + _tomcat_ver + ".tar.gz"
 ce_dir = os.getcwd() + "/ce"
@@ -355,6 +407,8 @@ class color:
 if (__name__ == "__main__"):
 
     args = docopt.docopt(__doc__, version = "0.1")
+
+    env = get_working_environment(args)
 
     try:
         main(args)
