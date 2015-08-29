@@ -380,15 +380,16 @@ def check_db():
 
 def get_working_environment(args):
     if (args["--env"]):
-        if (args["--env"] == "dev"):
+        if (args["--env"] in env_list):
             return args["--env"]
         else:
             raise ValueError("Unknown environment " + args["--env"])
     return "dev"
 
 
-# working environment (dev, ci)
-env = "dev"
+# working environment
+env_list = ["dev", "ci"]
+env = ""
 tomcat_home = os.getcwd() + "/tomcat"
 tomcat_distribution_file = os.path.expanduser("~") + "/.cache/jst/apache-tomcat-" + _tomcat_ver + ".tar.gz"
 ce_dir = os.getcwd() + "/ce"
