@@ -109,7 +109,9 @@ def cmd_init(svn_user, branch_ce, branch_pro):
 
 
 def cmd_build(directory, run_tests):
-    ensure_tomcat()
+    if (env == "dev"):
+        ensure_tomcat()
+
     args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml"]
 
     if (directory):
@@ -132,7 +134,9 @@ def cmd_build(directory, run_tests):
 
 
 def cmd_deploy(directory):
-    ensure_tomcat()
+    if (env == "dev"):
+        ensure_tomcat()
+
     if (directory):
 
         directory = format_path(directory)
@@ -286,6 +290,7 @@ def normalize_branch_name(branch):
     return branch;
 
 def configure_buildomatic(db):
+    check_db_type(db)
     """writes default_master.properties file"""
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
         write_app_server_section(f)
@@ -294,8 +299,11 @@ def configure_buildomatic(db):
 
 
 def write_app_server_section(f):
-    f.write("appServerType = tomcat7\n")
-    f.write("appServerDir = " + tomcat_home + "\n")
+    if (env == "dev"):
+        f.write("appServerType = tomcat7\n")
+        f.write("appServerDir = " + tomcat_home + "\n")
+    else:
+        f.write("appServerType = skipAppServerCheck\n")
 
 
 def write_db_section(f, db):
@@ -310,7 +318,16 @@ def write_db_section(f, db):
         f.write("dbHost = " + db_host + "\n")
         f.write("dbUsername = postgres\n")
         f.write("dbPassword = postgres\n")
+    elif (db == "mysql"):
+        f.write("dbType = mysql\n")
+        f.write("dbHost = " + db_host + "\n")
+        f.write("dbUsername = root\n")
+        f.write("dbPassword =\n")
     else:
+        raise ValueError("Unknown db type " + db)
+
+def check_db_type(db):
+    if (db not in ["pg", "mysql"]):
         raise ValueError("Unknown db type " + db)
 
 
@@ -370,6 +387,7 @@ def execute_catalina_action(action):
 
 
 def check_db():
+    """checks if db is up"""
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result = s.connect_ex(("localhost", 5432))
     if (result != 0):
