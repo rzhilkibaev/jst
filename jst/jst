@@ -130,7 +130,7 @@ def cmd_build(directory, run_tests):
     if (not run_tests):
         args += ["-DSKIP_TEST_ARG=skipTests"]
 
-    subprocess.call(args)
+    subprocess.check_call(args)
 
 
 def cmd_deploy(directory):
@@ -159,7 +159,7 @@ def cmd_deploy(directory):
             raise IOError("Nothing to deploy at: " + source)
     else:
         args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml", "deploy-webapp-pro"]
-        subprocess.call(args)
+        subprocess.check_call(args)
 
 
 def format_path(directory):
@@ -207,14 +207,14 @@ def cmd_log():
 
 
 def cmd_revert():
-    subprocess.call(["svn", "revert", ce_dir, "-R"])
-    subprocess.call(["svn", "revert", pro_dir, "-R"])
+    subprocess.check_call(["svn", "revert", ce_dir, "-R"])
+    subprocess.check_call(["svn", "revert", pro_dir, "-R"])
 
 
 def cmd_go():
     pids = get_tomcat_pids()
     if (pids):
-        subprocess.call(["xdg-open", "http://localhost:8080/jasperserver-pro"],
+        subprocess.check_call(["xdg-open", "http://localhost:8080/jasperserver-pro"],
                         stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
     else:
         cmd_ps()
@@ -225,7 +225,7 @@ def cmd_configure(db):
 
 
 def cmd_init_db():
-    subprocess.call(["ant",
+    subprocess.check_call(["ant",
                      "create-js-db",
                      "build-js-ddl-pro",
                      "init-js-db-pro",
@@ -242,8 +242,8 @@ def assert_initialized():
 
 
 def run_svn_command(svn_args):
-    subprocess.call(["svn"] + svn_args + [ce_dir])
-    subprocess.call(["svn"] + svn_args + [pro_dir])
+    subprocess.check_call(["svn"] + svn_args + [ce_dir])
+    subprocess.check_call(["svn"] + svn_args + [pro_dir])
 
 
 def stop_gracefully(timeout):
@@ -282,8 +282,8 @@ def checkout(svn_user, branch_ce, branch_pro):
         port = "2000"
 
     svn_url_prefix = "https://" + svn_user + "@svnserver.jaspersoft.com:" + port + "/jasperserver"
-    subprocess.call(["svn", "checkout", svn_url_prefix + "/" + normalize_branch_name(branch_ce), "ce"])
-    subprocess.call(["svn", "checkout", svn_url_prefix + "-pro/" + normalize_branch_name(branch_pro), "pro"])
+    subprocess.check_call(["svn", "checkout", svn_url_prefix + "/" + normalize_branch_name(branch_ce), "ce"])
+    subprocess.check_call(["svn", "checkout", svn_url_prefix + "-pro/" + normalize_branch_name(branch_pro), "pro"])
 
 
 def normalize_branch_name(branch):
@@ -369,7 +369,7 @@ def extract_tomcat():
     if (not os.path.isdir(tomcat_home)):
         os.makedirs(tomcat_home)
         print("Extracting tomcat into " + tomcat_home)
-        subprocess.call(["tar", "-xf", tomcat_distribution_file, "-C", tomcat_home, "--strip-components=1"])
+        subprocess.check_call(["tar", "-xf", tomcat_distribution_file, "-C", tomcat_home, "--strip-components=1"])
 
 
 def configure_tomcat():
@@ -386,7 +386,7 @@ def print_progress(count, blockSize, totalSize):
 
 
 def execute_catalina_action(action):
-    subprocess.call([tomcat_home + "/bin/catalina.sh", action],
+    subprocess.check_call([tomcat_home + "/bin/catalina.sh", action],
                     stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
 
 
@@ -438,3 +438,4 @@ if (__name__ == "__main__"):
     except Exception as e:
         print(color.FAIL + str(e) + color.ENDC)
         # traceback.print_exc()
+        exit(1)
