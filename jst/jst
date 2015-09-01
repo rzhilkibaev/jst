@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Usage: 
-       jst init SVN_USER BRANCH_CE BRANCH_PRO [--env=<env>]
+       jst init BRANCH_CE BRANCH_PRO [SVN_USER] [--env=<env>]
        jst (build|bd) [DIR] [--test] [--env=<env>]
        jst deploy [DIR] [--env=<env>]
        jst (start|stop|restart|ps|log|go|status|update|diff|revert|init-db) [--env=<env>]
@@ -56,7 +56,7 @@ def main(args):
         assert_initialized()
 
     if (args["init"]):
-        cmd_init(args["SVN_USER"], args["BRANCH_CE"], args["BRANCH_PRO"])
+        cmd_init(args["BRANCH_CE"], args["BRANCH_PRO"], args["SVN_USER"])
     # ant/buildomatic commands
     elif (args["build"]):
         cmd_build(args["DIR"], args["--test"])
@@ -99,10 +99,13 @@ def main(args):
         raise ValueError("Unknown arguments:\n" + str(args))
 
 
-def cmd_init(svn_user, branch_ce, branch_pro):
+def cmd_init(branch_ce, branch_pro, svn_user):
     """checkout source and configure buildomatic"""
-    checkout(svn_user, branch_ce, branch_pro)
-    configure_buildomatic("pg") # postgres is default db
+    if (not svn_user):
+        svn_user = "anonymous"
+
+    svn_checkout(branch_ce, branch_pro, svn_user)
+    # configure_buildomatic("pg") # postgres is default db
     # only devs need sources so no need to tweak under any other environment
     if (env == "dev"):
         tweak_buildomatic_for_dev_env()
@@ -275,15 +278,22 @@ def get_tomcat_pids():
     return pids
 
 
-def checkout(svn_user, branch_ce, branch_pro):
+def svn_checkout(branch_ce, branch_pro, svn_user):
     """checkout source"""
-    port = "443"
-    if (env == "ci"):
-        port = "2000"
+    svn_url_prefix = "https://" + svn_user + "@svnserver.jaspersoft.com/jasperserver"
 
-    svn_url_prefix = "https://" + svn_user + "@svnserver.jaspersoft.com:" + port + "/jasperserver"
-    subprocess.call(["svn", "checkout", svn_url_prefix + "/" + normalize_branch_name(branch_ce), "ce"])
-    subprocess.call(["svn", "checkout", svn_url_prefix + "-pro/" + normalize_branch_name(branch_pro), "pro"])
+    if (branch_ce.startswith("https://")):
+        url_ce = branch_ce
+    else:
+        url_ce = svn_url_prefix + "/" + normalize_branch_name(branch_ce)
+
+    if (branch_pro.startswith("https://")):
+        url_pro = branch_pro
+    else:
+        url_pro = svn_url_prefix + "-pro/" + normalize_branch_name(branch_pro)
+
+    subprocess.call(["svn", "checkout", url_ce, "ce"])
+    subprocess.call(["svn", "checkout", url_pro, "pro"])
 
 
 def normalize_branch_name(branch):
