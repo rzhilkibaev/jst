@@ -105,7 +105,7 @@ def cmd_init(branch_ce, branch_pro, svn_user):
         svn_user = "anonymous"
 
     svn_checkout(branch_ce, branch_pro, svn_user)
-    # configure_buildomatic("pg") # postgres is default db
+    configure_buildomatic("pg") # postgres is default db
     # only devs need sources so no need to tweak under any other environment
     if (env == "dev"):
         tweak_buildomatic_for_dev_env()
