@@ -47,7 +47,7 @@ import time
 import urllib.request
 
 
-_tomcat_ver = "7.0.62"
+_tomcat_ver = "7.0.64"
 
 def main(args):
 
@@ -369,7 +369,7 @@ def ensure_tomcat():
 def download_tomcat():
     distribution_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
     if (not os.path.isfile(tomcat_distribution_file)):
-        os.makedirs(os.path.dirname(tomcat_distribution_file))
+        os.makedirs(os.path.dirname(tomcat_distribution_file), exist_ok=True)
         print("Downloading tomcat " + _tomcat_ver + " from " + distribution_url)
         urllib.request.urlretrieve(distribution_url, tomcat_distribution_file, print_progress)
         print()
@@ -447,5 +447,5 @@ if (__name__ == "__main__"):
         main(args)
     except Exception as e:
         print(color.FAIL + str(e) + color.ENDC)
-        # traceback.print_exc()
+        traceback.print_exc()
         exit(1)
