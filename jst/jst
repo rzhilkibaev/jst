@@ -447,5 +447,5 @@ if (__name__ == "__main__"):
         main(args)
     except Exception as e:
         print(color.FAIL + str(e) + color.ENDC)
-        traceback.print_exc()
+        # traceback.print_exc()
         exit(1)
