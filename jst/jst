@@ -269,9 +269,9 @@ def get_tomcat_pids():
     pids = []
 
     for proc in psutil.process_iter():
-        if (proc.name == "java" \
-                and catalina_main_class_arg in proc.cmdline \
-                and catalina_home_arg in proc.cmdline):
+        if (proc.name() == "java" \
+                and catalina_main_class_arg in proc.cmdline() \
+                and catalina_home_arg in proc.cmdline()):
             pids.append(str(proc.pid))
             # keep looking, might be multiple instances running
 
