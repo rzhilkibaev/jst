@@ -133,7 +133,28 @@ def cmd_build(directory, run_tests):
     if (not run_tests):
         args += ["-DSKIP_TEST_ARG=skipTests"]
 
-    subprocess.check_call(args)
+    changed_env = ensure_java7()
+    subprocess.check_call(args, env=changed_env)
+
+
+def ensure_java7():
+    # cannot compile with java 8
+    process_env = os.environ.copy()
+    # check if we have java 7 already
+    if (not is_java7(process_env["JAVA_HOME"] + "/bin/java")):
+        # a guess
+        process_env["JAVA_HOME"] = "/usr/lib/jvm/java-7-oracle"
+    # check again
+    if (not is_java7(process_env["JAVA_HOME"] + "/bin/java")):
+        raise IOError("java 7 is required to build source")
+
+    return process_env
+
+def is_java7(java_binary):
+    java_output = subprocess.check_output([java_binary, "-version"],
+                                          universal_newlines=True,
+                                          stderr=subprocess.STDOUT)
+    return ('java version "1.7.' in java_output)
 
 
 def cmd_deploy(directory):
