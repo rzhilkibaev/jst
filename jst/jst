@@ -141,7 +141,7 @@ def ensure_java7():
     # cannot compile with java 8
     process_env = os.environ.copy()
     # check if we have java 7 already
-    if (not is_java7(process_env["JAVA_HOME"] + "/bin/java")):
+    if ("JAVA_HOME" not in process_env or not is_java7(process_env["JAVA_HOME"] + "/bin/java")):
         # a guess
         process_env["JAVA_HOME"] = "/usr/lib/jvm/java-7-oracle"
     # check again
