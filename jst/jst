@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 """
-Usage: 
-       jst init BRANCH_CE BRANCH_PRO [SVN_USER] [--env=<env>]
-       jst (build|bd) [DIR] [--test] [--env=<env>]
-       jst deploy [DIR] [--env=<env>]
-       jst (start|stop|restart|ps|log|go|status|update|diff|revert|init-db) [--env=<env>]
+Usage:
+       jst --help
+       jst init BRANCH_CE BRANCH_PRO [SVN_USER] [options]
+       jst (build|bd) [DIR] [--test] [options]
+       jst deploy [DIR] [options]
+       jst (start|stop|restart|ps|log|go|status|update|diff|revert|init-db) [options]
        jst svn SVN_ARGS...
-       jst configure --db=<db> [--env=<env>]
-       
+       jst configure --db=<db> [options]
+
+Options:
+    --env=<env>      Environment
+    --verbose        Verbose output
+
 Commands:
     init        checkout ce and pro source code and configure buildomatic
     build       build jrs (run tests if --test is specified)
     deploy      deploy jrs to tomcat
     bd          run build and deploy in one command (run tests if --test is specified)
-    start       start tomcat 
+    start       start tomcat
     stop        stop tomcat
     restart     restart tomcat
     ps          show tomcat process info
     log         print tomcat catalina.out
-    go          open app in default web browser 
+    go          open app in default web browser
     status      run 'svn status' against both source trees
     update      run 'svn update' against both source trees
     diff        run 'svn diff' against source trees
@@ -26,14 +31,13 @@ Commands:
     svn         run arbitrary svn command against both source trees
     configure   change default_master.properties according to parameters
     init-db     create jasperserver, foodmart and sugarcm databases
-    
+
 Examples:
     jst init anonymous branches/bugfix branches/bugfix-pro
     jst init anonymous trunk trunk
     jst build ce/jasperserver-war
 """
 
-import docopt
 import fileinput
 import glob
 import os
@@ -44,7 +48,10 @@ import subprocess
 import sys
 import textwrap
 import time
+import traceback
 import urllib.request
+
+import docopt
 
 
 _tomcat_ver = "7.0.64"
@@ -134,7 +141,8 @@ def cmd_build(directory, run_tests):
         args += ["-DSKIP_TEST_ARG=skipTests"]
 
     changed_env = ensure_java7()
-    subprocess.check_call(args, env=changed_env)
+    log_info("Building")
+    subprocess.check_call(args, env=changed_env, stdout=subprocess_stdout)
 
 
 def ensure_java7():
@@ -144,6 +152,7 @@ def ensure_java7():
     if (not is_java7(process_env["JAVA_HOME"] + "/bin/java")):
         # a guess
         process_env["JAVA_HOME"] = "/usr/lib/jvm/java-7-oracle"
+        log_info("Looking for java 7")
     # check again
     if (not is_java7(process_env["JAVA_HOME"] + "/bin/java")):
         raise IOError("java 7 is required to build source")
@@ -176,14 +185,15 @@ def cmd_deploy(directory):
         for file in files:
             if (not file.endswith("sources.jar")):
                 shutil.copy(file, destination)
-                print("Deployed: " + file)
+                log_info("Deployed: " + file)
                 deployed = True
 
         if (not deployed):
             raise IOError("Nothing to deploy at: " + source)
     else:
         args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml", "deploy-webapp-pro"]
-        subprocess.check_call(args)
+        log_info("Deploying")
+        subprocess.check_call(args, stdout=subprocess_stdout)
 
 
 def format_path(directory):
@@ -195,10 +205,11 @@ def format_path(directory):
 def cmd_start():
     pids = get_tomcat_pids()
     if (pids):
-        print("Already running; pid(s): " + ", ".join(pids))
+        log_info("Already running; pid(s): " + ", ".join(pids))
         return
 
     check_db()
+    log_info("Starting tomcat")
     execute_catalina_action("start")
     cmd_ps()
 
@@ -209,9 +220,9 @@ def cmd_stop():
         stop_gracefully(30)
         pids = get_tomcat_pids()
         if (pids):
-            print("Unable to stop gracefully")
+            log_warning("Unable to stop gracefully")
             for pid in pids:
-                print("killing process with pid " + pid)
+                log_warning("killing process with pid " + pid)
                 psutil.Process(int(pid)).kill()
 
     cmd_ps()
@@ -220,9 +231,9 @@ def cmd_stop():
 def cmd_ps():
     pids = get_tomcat_pids()
     if (pids):
-        print("pid(s): " + ", ".join(pids))
+        log_info("pid(s): " + ", ".join(pids))
     else:
-        print("tomcat is down")
+        log_info("tomcat is down")
 
 
 def cmd_log():
@@ -231,6 +242,7 @@ def cmd_log():
 
 
 def cmd_revert():
+    # always print results even if verbose=False
     subprocess.check_call(["svn", "revert", ce_dir, "-R"])
     subprocess.check_call(["svn", "revert", pro_dir, "-R"])
 
@@ -239,7 +251,7 @@ def cmd_go():
     pids = get_tomcat_pids()
     if (pids):
         subprocess.check_call(["xdg-open", "http://localhost:8080/jasperserver-pro"],
-                        stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         cmd_ps()
 
@@ -249,6 +261,7 @@ def cmd_configure(db):
 
 
 def cmd_init_db():
+    log_info("Initializing db")
     subprocess.check_call(["ant",
                      "create-js-db",
                      "build-js-ddl-pro",
@@ -257,7 +270,8 @@ def cmd_init_db():
                      "load-sugarcrm-db",
                      "create-foodmart-db",
                      "load-foodmart-db",
-                     "run-production-data-pro"], cwd = ce_dir + "/buildomatic")
+                     "run-production-data-pro"],
+                          cwd=ce_dir + "/buildomatic", stdout=subprocess_stdout)
 
 
 def assert_initialized():
@@ -272,7 +286,8 @@ def run_svn_command(svn_args):
 
 def stop_gracefully(timeout):
     execute_catalina_action("stop")
-    sys.stdout.write("Waiting for tomcat to stop")
+    log_info("Stopping tomcat")
+    #sys.stdout.write("Waiting for tomcat to stop")
     sys.stdout.flush()
     elapsed = 0 # number of seconds since shutdown initiated
     while (get_tomcat_pids() and elapsed <= timeout):
@@ -313,8 +328,10 @@ def svn_checkout(branch_ce, branch_pro, svn_user):
     else:
         url_pro = svn_url_prefix + "-pro/" + normalize_branch_name(branch_pro)
 
-    subprocess.check_call(["svn", "checkout", url_ce, "ce"])
-    subprocess.check_call(["svn", "checkout", url_pro, "pro"])
+    log_info("Checking out '" + url_ce + "' into 'ce'")
+    subprocess.check_call(["svn", "checkout", url_ce, "ce"], stdout=subprocess_stdout)
+    log_info("Checking out '" + url_pro + "' into 'pro'")
+    subprocess.check_call(["svn", "checkout", url_pro, "pro"], stdout=subprocess_stdout)
 
 
 def normalize_branch_name(branch):
@@ -325,6 +342,7 @@ def normalize_branch_name(branch):
     return branch;
 
 def configure_buildomatic(db):
+    log_info("Configuring buildomatic")
     check_db_type(db)
     """writes default_master.properties file"""
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
@@ -376,10 +394,10 @@ def write_source_section(f):
 def tweak_buildomatic_for_dev_env():
     """makes maven install sources into local repository"""
     searchString = '<arg value="clean"/>'
-    for line in fileinput.input(ce_dir + "/buildomatic/bin/dev.xml", inplace = True):
+    for line in fileinput.input(ce_dir + "/buildomatic/bin/dev.xml", inplace=True):
         if (line.strip() == searchString):
             line = line.replace(searchString, searchString + '<arg value="source:jar-no-fork"/>')
-        print(line, end = "")
+        print(line, end="")
 
 def ensure_tomcat():
     download_tomcat()
@@ -391,7 +409,7 @@ def download_tomcat():
     distribution_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
     if (not os.path.isfile(tomcat_distribution_file)):
         os.makedirs(os.path.dirname(tomcat_distribution_file), exist_ok=True)
-        print("Downloading tomcat " + _tomcat_ver + " from " + distribution_url)
+        log_info("Downloading tomcat " + _tomcat_ver + " from " + distribution_url)
         urllib.request.urlretrieve(distribution_url, tomcat_distribution_file, print_progress)
         print()
 
@@ -399,8 +417,8 @@ def download_tomcat():
 def extract_tomcat():
     if (not os.path.isdir(tomcat_home)):
         os.makedirs(tomcat_home)
-        print("Extracting tomcat into " + tomcat_home)
-        subprocess.check_call(["tar", "-xf", tomcat_distribution_file, "-C", tomcat_home, "--strip-components=1"])
+        log_info("Extracting tomcat into " + tomcat_home)
+        subprocess.check_call(["tar", "-xf", tomcat_distribution_file, "-C", tomcat_home, "--strip-components=1"], stdout=subprocess_stdout)
 
 
 def configure_tomcat():
@@ -418,7 +436,7 @@ def print_progress(count, blockSize, totalSize):
 
 def execute_catalina_action(action):
     subprocess.check_call([tomcat_home + "/bin/catalina.sh", action],
-                    stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def check_db():
@@ -440,6 +458,26 @@ def get_working_environment(args):
     return "dev"
 
 
+def log_error(message):
+    log_color(message, color.RED, color.BRIGHT)
+
+
+def log_warning(message):
+    log_color(message, color.YELLOW, color.BRIGHT)
+
+
+def log_debug(message):
+    log_color(message, color.WHITE, color.DIM)
+
+
+def log_info(message):
+    print(str(message))
+
+
+def log_color(message, fg, style):
+    print("\033[" + fg + "m" + "\033[" + style + "m" + str(message) + "\033[0m")
+
+
 # working environment
 env_list = ["dev", "ci"]
 env = ""
@@ -447,26 +485,35 @@ tomcat_home = os.getcwd() + "/tomcat"
 tomcat_distribution_file = os.path.expanduser("~") + "/.cache/jst/apache-tomcat-" + _tomcat_ver + ".tar.gz"
 ce_dir = os.getcwd() + "/ce"
 pro_dir = os.getcwd() + "/pro"
+subprocess_stdout = subprocess.DEVNULL
 
 class color:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    BLACK = "30"
+    RED = "31"
+    GREEN = "32"
+    YELLOW = "33"
+    BLUE = "34"
+    MAGENTA = "35"
+    CYAN = "36"
+    WHITE = "37"
+    BRIGHT = "1"
+    DIM = "2"
+    NORMAL = "22"
+    RESET_ALL = "0"
 
 if (__name__ == "__main__"):
 
-    args = docopt.docopt(__doc__, version = "0.1")
+    args = docopt.docopt(__doc__, version="0.1")
+
+    if (args["--verbose"]):
+        subprocess_stdout = None
 
     env = get_working_environment(args)
 
     try:
         main(args)
     except Exception as e:
-        print(color.FAIL + str(e) + color.ENDC)
-        # traceback.print_exc()
+        log_error(e)
+        if (args["--verbose"]):
+            traceback.print_exc()
         exit(1)
