@@ -57,3 +57,7 @@ target/
 .project
 .pydevproject
 .settings/
+
+# Vim
+.*.swp
+.*.swo
