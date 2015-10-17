@@ -38,6 +38,7 @@ Examples:
     jst build ce/jasperserver-war
 """
 
+import distutils.dir_util
 import fileinput
 import glob
 import os
@@ -345,11 +346,14 @@ def normalize_branch_name(branch):
 def configure_buildomatic(db):
     log_info("Configuring buildomatic")
     check_db_type(db)
-    """writes default_master.properties file"""
+    #writes default_master.properties file
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
         write_app_server_section(f)
         write_db_section(f, db)
         write_source_section(f)
+
+    if (db in ["ora"]):
+        copy_buildomatic_additional(db)
 
 
 def write_app_server_section(f):
@@ -377,11 +381,19 @@ def write_db_section(f, db):
         f.write("dbHost = " + db_host + "\n")
         f.write("dbUsername = root\n")
         f.write("dbPassword =\n")
+    elif (db == "ora"):
+        f.write("dbType = oracle\n")
+        f.write("dbHost = " + db_host + "\n")
+        f.write("sid = xe\n")
+        f.write("dbUsername = jasperserver\n")
+        f.write("dbPassword = password\n")
+        f.write("sysUsername = system\n")
+        f.write("sysPassword = oracle\n")
     else:
         raise ValueError("Unknown db type " + db)
 
 def check_db_type(db):
-    if (db not in ["pg", "mysql"]):
+    if (db not in ["pg", "mysql", "ora"]):
         raise ValueError("Unknown db type " + db)
 
 
@@ -390,6 +402,14 @@ def write_source_section(f):
     f.write("mvn-mirror=http://mvnrepo.jaspersoft.com:8081/artifactory/repo\n")
     f.write("js-path = " + ce_dir + "\n")
     f.write("js-pro-path = " + pro_dir + "\n")
+
+def copy_buildomatic_additional(db):
+    copy(pro_dir + "/buildomatic-additional", ce_dir + "/buildomatic")
+    raise ValueError("test")
+
+
+def copy(src, dst):
+    distutils.dir_util.copy_tree(src, dst)
 
 
 def tweak_buildomatic_for_dev_env():
