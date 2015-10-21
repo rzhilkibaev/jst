@@ -353,7 +353,7 @@ def configure_buildomatic(db):
         write_source_section(f)
 
     if (db in ["ora"]):
-        copy_buildomatic_additional(db)
+        copy_buildomatic_additional()
 
 
 def write_app_server_section(f):
@@ -403,9 +403,8 @@ def write_source_section(f):
     f.write("js-path = " + ce_dir + "\n")
     f.write("js-pro-path = " + pro_dir + "\n")
 
-def copy_buildomatic_additional(db):
+def copy_buildomatic_additional():
     copy(pro_dir + "/buildomatic-additional", ce_dir + "/buildomatic")
-    raise ValueError("test")
 
 
 def copy(src, dst):
