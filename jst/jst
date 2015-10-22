@@ -380,7 +380,7 @@ def write_db_section(f, db):
         f.write("dbType = mysql\n")
         f.write("dbHost = " + db_host + "\n")
         f.write("dbUsername = root\n")
-        f.write("dbPassword =\n")
+        f.write("dbPassword = password\n")
     elif (db == "ora"):
         f.write("dbType = oracle\n")
         f.write("dbHost = " + db_host + "\n")
