@@ -371,19 +371,18 @@ def write_db_section(f, db):
     else:
         db_host = "db"
 
+    f.write("dbHost = " + db_host + "\n")
+
     if (db == "pg"):
         f.write("dbType = postgresql\n")
-        f.write("dbHost = " + db_host + "\n")
         f.write("dbUsername = postgres\n")
         f.write("dbPassword = postgres\n")
     elif (db == "mysql"):
         f.write("dbType = mysql\n")
-        f.write("dbHost = " + db_host + "\n")
         f.write("dbUsername = root\n")
         f.write("dbPassword = password\n")
     elif (db == "ora"):
         f.write("dbType = oracle\n")
-        f.write("dbHost = " + db_host + "\n")
         f.write("sid = xe\n")
         f.write("dbUsername = jasperserver\n")
         f.write("dbPassword = password\n")
