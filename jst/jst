@@ -14,7 +14,7 @@ Options:
     --verbose        Verbose output
 
 Commands:
-    init        checkout ce and pro source code and configure buildomatic
+    init        checkout ce and pro source code (as OS user by default) and configure buildomatic
     build       build jrs (run tests if --test is specified)
     deploy      deploy jrs to tomcat
     bd          run build and deploy in one command (run tests if --test is specified)
@@ -33,8 +33,9 @@ Commands:
     init-db     create jasperserver, foodmart and sugarcm databases
 
 Examples:
-    jst init anonymous branches/bugfix branches/bugfix-pro
-    jst init anonymous trunk trunk
+    jst init branches/bugfix branches/bugfix-pro anonymous
+    jst init bugfix bugfix-pro anonymous
+    jst init trunk trunk
     jst build ce/jasperserver-war
 """
 
@@ -53,6 +54,7 @@ import traceback
 import urllib.request
 
 import docopt
+import getpass
 
 
 _tomcat_ver = "7.0.64"
@@ -110,8 +112,8 @@ def main(args):
 def cmd_init(branch_ce, branch_pro, svn_user):
     """checkout source and configure buildomatic"""
     if (not svn_user):
-        svn_user = "anonymous"
-
+        svn_user = getpass.getuser()
+        
     svn_checkout(branch_ce, branch_pro, svn_user)
     configure_buildomatic("pg") # postgres is default db
     # only devs need sources so no need to tweak under any other environment
