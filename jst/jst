@@ -7,7 +7,7 @@ Usage:
        jst deploy [DIR] [options]
        jst (start|stop|restart|ps|log|go|status|update|diff|revert|init-db) [options]
        jst svn SVN_ARGS...
-       jst configure --db=<db> [options]
+       jst configure [--dbType=<dbType>] [--dbHost=<dbHost>] [--appServerType=<appServerType>] [options]
 
 Options:
     --env=<env>      Environment
@@ -102,7 +102,7 @@ def main(args):
     elif (args["go"]):
         cmd_go()
     elif (args["configure"]):
-        cmd_configure(args["--db"])
+        cmd_configure(args["--dbType"], args["--dbHost"], args["--appServerType"], )
     elif (args["init-db"]):
         cmd_init_db()
     else:
@@ -115,7 +115,7 @@ def cmd_init(branch_ce, branch_pro, svn_user):
         svn_user = getpass.getuser()
         
     svn_checkout(branch_ce, branch_pro, svn_user)
-    configure_buildomatic("postgresql") # postgres is default db
+    configure_buildomatic("postgresql", "localhost", "tomcat7") # postgres is default db
     # only devs need sources so no need to tweak under any other environment
     if (env == "dev"):
         tweak_buildomatic_for_dev_env()
@@ -259,8 +259,8 @@ def cmd_go():
         cmd_ps()
 
 
-def cmd_configure(db_type):
-    configure_buildomatic(db_type)
+def cmd_configure(db_type, db_host, app_server_type):
+    configure_buildomatic(db_type, db_host, app_server_type)
 
 
 def cmd_init_db():
@@ -345,33 +345,29 @@ def normalize_branch_name(branch):
 
     return branch;
 
-def configure_buildomatic(db_type):
+def configure_buildomatic(db_type, db_host, app_server_type):
     log_info("Configuring buildomatic")
     check_db_type(db_type)
     #writes default_master.properties file
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
-        write_app_server_section(f)
-        write_db_section(f, db_type)
+        write_app_server_section(f, app_server_type)
+        write_db_section(f, db_type, db_host)
         write_source_section(f)
 
     copy_buildomatic_additional()
 
 
-def write_app_server_section(f):
-    if (env == "dev"):
-        f.write("appServerType = tomcat7\n")
-        f.write("appServerDir = " + tomcat_home + "\n")
-    else:
-        f.write("appServerType = skipAppServerCheck\n")
+def write_app_server_section(f, app_server_type):
+    if (app_server_type == None or app_server_type == ""):
+        app_server_type = "tomcat7"
+    f.write("appServerType = " + app_server_type + "\n")
+    f.write("appServerDir = " + tomcat_home + "\n")
 
 
-def write_db_section(f, db_type):
-    if (env == "dev"):
-        # devs run the app and the db on the same machine
+def write_db_section(f, db_type, db_host):
+    if (db_host == None):
         db_host = "localhost"
-    else:
-        db_host = "db"
-
+        
     f.write("dbHost = " + db_host + "\n")
 
     if (db_type == "postgresql"):
