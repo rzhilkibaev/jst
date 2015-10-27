@@ -115,7 +115,7 @@ def cmd_init(branch_ce, branch_pro, svn_user):
         svn_user = getpass.getuser()
         
     svn_checkout(branch_ce, branch_pro, svn_user)
-    configure_buildomatic("pg") # postgres is default db
+    configure_buildomatic("postgresql") # postgres is default db
     # only devs need sources so no need to tweak under any other environment
     if (env == "dev"):
         tweak_buildomatic_for_dev_env()
@@ -374,7 +374,7 @@ def write_db_section(f, db_type):
 
     f.write("dbHost = " + db_host + "\n")
 
-    if (db_type == "pg"):
+    if (db_type == "postgresql"):
         f.write("dbType = postgresql\n")
         f.write("dbUsername = postgres\n")
         f.write("dbPassword = postgres\n")
@@ -382,7 +382,7 @@ def write_db_section(f, db_type):
         f.write("dbType = mysql\n")
         f.write("dbUsername = root\n")
         f.write("dbPassword = password\n")
-    elif (db_type == "ora"):
+    elif (db_type == "oracle"):
         f.write("dbType = oracle\n")
         f.write("sid = xe\n")
         f.write("dbUsername = jasperserver\n")
@@ -393,8 +393,9 @@ def write_db_section(f, db_type):
         raise ValueError("Unknown db type " + db_type)
 
 def check_db_type(db_type):
-    if (db_type not in ["pg", "mysql", "ora"]):
-        raise ValueError("Unknown db type " + db_type)
+    known_db_types = ["postgresql", "mysql", "oracle"]
+    if (db_type not in known_db_types):
+        raise ValueError("Unknown db type " + db_type + ". Known db types are: " + str(known_db_types))
 
 
 def write_source_section(f):
