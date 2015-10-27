@@ -259,8 +259,8 @@ def cmd_go():
         cmd_ps()
 
 
-def cmd_configure(db):
-    configure_buildomatic(db)
+def cmd_configure(db_type):
+    configure_buildomatic(db_type)
 
 
 def cmd_init_db():
@@ -345,13 +345,13 @@ def normalize_branch_name(branch):
 
     return branch;
 
-def configure_buildomatic(db):
+def configure_buildomatic(db_type):
     log_info("Configuring buildomatic")
-    check_db_type(db)
+    check_db_type(db_type)
     #writes default_master.properties file
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
         write_app_server_section(f)
-        write_db_section(f, db)
+        write_db_section(f, db_type)
         write_source_section(f)
 
     copy_buildomatic_additional()
@@ -365,7 +365,7 @@ def write_app_server_section(f):
         f.write("appServerType = skipAppServerCheck\n")
 
 
-def write_db_section(f, db):
+def write_db_section(f, db_type):
     if (env == "dev"):
         # devs run the app and the db on the same machine
         db_host = "localhost"
@@ -374,15 +374,15 @@ def write_db_section(f, db):
 
     f.write("dbHost = " + db_host + "\n")
 
-    if (db == "pg"):
+    if (db_type == "pg"):
         f.write("dbType = postgresql\n")
         f.write("dbUsername = postgres\n")
         f.write("dbPassword = postgres\n")
-    elif (db == "mysql"):
+    elif (db_type == "mysql"):
         f.write("dbType = mysql\n")
         f.write("dbUsername = root\n")
         f.write("dbPassword = password\n")
-    elif (db == "ora"):
+    elif (db_type == "ora"):
         f.write("dbType = oracle\n")
         f.write("sid = xe\n")
         f.write("dbUsername = jasperserver\n")
@@ -390,11 +390,11 @@ def write_db_section(f, db):
         f.write("sysUsername = system\n")
         f.write("sysPassword = oracle\n")
     else:
-        raise ValueError("Unknown db type " + db)
+        raise ValueError("Unknown db type " + db_type)
 
-def check_db_type(db):
-    if (db not in ["pg", "mysql", "ora"]):
-        raise ValueError("Unknown db type " + db)
+def check_db_type(db_type):
+    if (db_type not in ["pg", "mysql", "ora"]):
+        raise ValueError("Unknown db type " + db_type)
 
 
 def write_source_section(f):
