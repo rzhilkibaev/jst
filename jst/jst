@@ -354,8 +354,7 @@ def configure_buildomatic(db):
         write_db_section(f, db)
         write_source_section(f)
 
-    if (db in ["ora"]):
-        copy_buildomatic_additional()
+    copy_buildomatic_additional()
 
 
 def write_app_server_section(f):
