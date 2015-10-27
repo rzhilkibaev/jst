@@ -211,7 +211,7 @@ def cmd_start():
         log_info("Already running; pid(s): " + ", ".join(pids))
         return
 
-    check_db()
+    check_if_db_is_up()
     log_info("Starting tomcat")
     execute_catalina_action("start")
     cmd_ps()
@@ -460,7 +460,7 @@ def execute_catalina_action(action):
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def check_db():
+def check_if_db_is_up():
     """checks if db is up"""
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result = s.connect_ex(("localhost", 5432))
