@@ -391,7 +391,7 @@ def write_db_section(f, db_type, db_host):
 
 def check_db_type(db_type):
     if (db_type not in supported_db_types):
-        raise ValueError("Unknown db type " + db_type + ". Supported db types are: " + str(supported_db_types))
+        raise ValueError("Unknown db type " + str(db_type) + ". Supported db types are: " + str(supported_db_types))
 
 
 def write_source_section(f):
@@ -459,11 +459,35 @@ def execute_catalina_action(action):
 def check_if_db_is_up():
     """checks if db is up"""
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = s.connect_ex(("localhost", 5432))
+    result = s.connect_ex((get_db_host(), get_db_port()))
     if (result != 0):
         raise IOError("DB is down")
 
     s.close()
+    
+    
+def get_db_host():
+    return get_buildomatic_property("dbHost")
+        
+    
+def get_db_port():
+    db_port = get_buildomatic_property("dbPort")
+    if (db_port):
+        return db_port
+    
+    db_type = get_buildomatic_property("dbType")
+    check_db_type(db_type)
+    return db_type_to_default_port_dict[db_type]
+        
+    
+def get_buildomatic_property(requested_property_name):
+    """reads a property from buildomatic config file"""
+    with open(ce_dir + "/buildomatic/default_master.properties", 'r') as f:
+        for line in f:
+            if (not line.startswith("#")):
+                property_name, property_value = line.split("=")
+                if (property_name.strip() == requested_property_name):
+                    return property_value.strip()
 
 
 def get_working_environment(args):
@@ -505,6 +529,10 @@ pro_dir = os.getcwd() + "/pro"
 supported_db_types_pro = ["oracle"]
 supported_db_types = ["postgresql", "mysql"] + supported_db_types_pro
 subprocess_stdout = subprocess.DEVNULL
+
+db_type_to_default_port_dict = {"postgresql": 5432,
+                                "mysql": 3306,
+                                "oracle": 1521}
 
 class color:
     BLACK = "30"
