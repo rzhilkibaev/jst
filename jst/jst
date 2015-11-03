@@ -354,7 +354,8 @@ def configure_buildomatic(db_type, db_host, app_server_type):
         write_db_section(f, db_type, db_host)
         write_source_section(f)
 
-    copy_buildomatic_additional()
+    if (db_type in supported_db_types_pro):
+        copy_buildomatic_additional()
 
 
 def write_app_server_section(f, app_server_type):
@@ -389,9 +390,8 @@ def write_db_section(f, db_type, db_host):
         raise ValueError("Unknown db type " + db_type)
 
 def check_db_type(db_type):
-    known_db_types = ["postgresql", "mysql", "oracle"]
-    if (db_type not in known_db_types):
-        raise ValueError("Unknown db type " + db_type + ". Known db types are: " + str(known_db_types))
+    if (db_type not in supported_db_types):
+        raise ValueError("Unknown db type " + db_type + ". Supported db types are: " + str(supported_db_types))
 
 
 def write_source_section(f):
@@ -502,6 +502,8 @@ tomcat_home = os.getcwd() + "/tomcat"
 tomcat_distribution_file = os.path.expanduser("~") + "/.cache/jst/apache-tomcat-" + _tomcat_ver + ".tar.gz"
 ce_dir = os.getcwd() + "/ce"
 pro_dir = os.getcwd() + "/pro"
+supported_db_types_pro = ["oracle"]
+supported_db_types = ["postgresql", "mysql"] + supported_db_types_pro
 subprocess_stdout = subprocess.DEVNULL
 
 class color:
