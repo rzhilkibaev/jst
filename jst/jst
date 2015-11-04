@@ -474,9 +474,16 @@ def get_db_port():
     db_port = get_buildomatic_property("dbPort")
     if (db_port):
         return db_port
-    
+
+    return get_default_db_port()
+
+
+def get_default_db_port():    
     db_type = get_buildomatic_property("dbType")
     check_db_type(db_type)
+    db_type_to_default_port_dict = {"postgresql": 5432,
+                                    "mysql": 3306,
+                                    "oracle": 1521}
     return db_type_to_default_port_dict[db_type]
         
     
@@ -530,9 +537,6 @@ supported_db_types_pro = ["oracle"]
 supported_db_types = ["postgresql", "mysql"] + supported_db_types_pro
 subprocess_stdout = subprocess.DEVNULL
 
-db_type_to_default_port_dict = {"postgresql": 5432,
-                                "mysql": 3306,
-                                "oracle": 1521}
 
 class color:
     BLACK = "30"
