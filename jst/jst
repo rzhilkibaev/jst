@@ -5,7 +5,7 @@ Usage:
        jst init BRANCH_CE BRANCH_PRO [SVN_USER] [options]
        jst (build|bd) [DIR] [--test] [options]
        jst deploy [DIR] [options]
-       jst (start|stop|restart|ps|log|go|status|update|diff|revert|init-db) [options]
+       jst (start|stop|restart|ps|status|update|diff|revert|init-db) [options]
        jst svn SVN_ARGS...
        jst configure [--dbType=<dbType>] [--dbHost=<dbHost>] [--appServerType=<appServerType>] [options]
 
@@ -22,8 +22,6 @@ Commands:
     stop        stop tomcat
     restart     restart tomcat
     ps          show tomcat process info
-    log         print tomcat catalina.out
-    go          open app in default web browser
     status      run 'svn status' against both source trees
     update      run 'svn update' against both source trees
     diff        run 'svn diff' against source trees
@@ -62,7 +60,7 @@ _tomcat_ver = "7.0.64"
 def main(args):
 
     # check if we are in the right directory
-    if (not args["init"] and not args["go"]):
+    if (not args["init"]):
         assert_initialized()
 
     if (args["init"]):
@@ -85,8 +83,6 @@ def main(args):
         cmd_start()
     elif (args["ps"]):
         cmd_ps()
-    elif (args["log"]):
-        cmd_log()
     # svn commands
     elif (args["status"]):
         run_svn_command(["status"])
@@ -99,8 +95,6 @@ def main(args):
     elif (args["svn"]):
         run_svn_command(args["SVN_ARGS"])
     # misc commands
-    elif (args["go"]):
-        cmd_go()
     elif (args["configure"]):
         cmd_configure(args["--dbType"], args["--dbHost"], args["--appServerType"], )
     elif (args["init-db"]):
@@ -122,9 +116,6 @@ def cmd_init(branch_ce, branch_pro, svn_user):
 
 
 def cmd_build(directory, run_tests):
-    if (env == "dev"):
-        ensure_tomcat()
-
     args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml"]
 
     if (directory):
@@ -170,9 +161,7 @@ def is_java7(java_binary):
 
 
 def cmd_deploy(directory):
-    if (env == "dev"):
-        ensure_tomcat()
-
+    get_app_server().install()
     if (directory):
 
         directory = format_path(directory)
@@ -182,17 +171,7 @@ def cmd_deploy(directory):
 
         source = os.getcwd() + "/" + directory + "/target/*.jar"
         files = glob.glob(source)
-        destination = tomcat_home + "/webapps/jasperserver-pro/WEB-INF/lib/"
-        deployed = False
-
-        for file in files:
-            if (not file.endswith("sources.jar")):
-                shutil.copy(file, destination)
-                log_info("Deployed: " + file)
-                deployed = True
-
-        if (not deployed):
-            raise IOError("Nothing to deploy at: " + source)
+        get_app_server().deploy(files)
     else:
         args = ["ant", "-buildfile", ce_dir + "/buildomatic/build.xml", "deploy-webapp-pro"]
         log_info("Deploying")
@@ -206,57 +185,21 @@ def format_path(directory):
 
 
 def cmd_start():
-    pids = get_tomcat_pids()
-    if (pids):
-        log_info("Already running; pid(s): " + ", ".join(pids))
-        return
-
-    check_if_db_is_up()
-    log_info("Starting tomcat")
-    execute_catalina_action("start")
-    cmd_ps()
-
-
-def cmd_stop():
-    pids = get_tomcat_pids()
-    if (pids):
-        stop_gracefully(30)
-        pids = get_tomcat_pids()
-        if (pids):
-            log_warning("Unable to stop gracefully")
-            for pid in pids:
-                log_warning("killing process with pid " + pid)
-                psutil.Process(int(pid)).kill()
-
-    cmd_ps()
+    get_app_server().start()
 
 
 def cmd_ps():
-    pids = get_tomcat_pids()
-    if (pids):
-        log_info("pid(s): " + ", ".join(pids))
-    else:
-        log_info("tomcat is down")
+    get_app_server().ps()
 
 
-def cmd_log():
-    with open(tomcat_home + "/logs/catalina.out", 'r') as fin:
-        print(fin.read())
+def cmd_stop():
+    get_app_server().stop()
 
 
 def cmd_revert():
     # always print results even if verbose=False
     subprocess.check_call(["svn", "revert", ce_dir, "-R"])
     subprocess.check_call(["svn", "revert", pro_dir, "-R"])
-
-
-def cmd_go():
-    pids = get_tomcat_pids()
-    if (pids):
-        subprocess.check_call(["xdg-open", "http://localhost:8080/jasperserver-pro"],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    else:
-        cmd_ps()
 
 
 def cmd_configure(db_type, db_host, app_server_type):
@@ -286,36 +229,6 @@ def assert_initialized():
 def run_svn_command(svn_args):
     subprocess.check_call(["svn"] + svn_args + [ce_dir])
     subprocess.check_call(["svn"] + svn_args + [pro_dir])
-
-
-def stop_gracefully(timeout):
-    execute_catalina_action("stop")
-    log_info("Stopping tomcat")
-    #sys.stdout.write("Waiting for tomcat to stop")
-    sys.stdout.flush()
-    elapsed = 0 # number of seconds since shutdown initiated
-    while (get_tomcat_pids() and elapsed <= timeout):
-        time.sleep(1)
-        elapsed += 1
-        sys.stdout.write(".")
-        sys.stdout.flush()
-
-    print()
-
-
-def get_tomcat_pids():
-    catalina_main_class_arg = "org.apache.catalina.startup.Bootstrap"
-    catalina_home_arg = "-Dcatalina.home=" + tomcat_home
-    pids = []
-
-    for proc in psutil.process_iter():
-        if (proc.name() == "java" \
-                and catalina_main_class_arg in proc.cmdline() \
-                and catalina_home_arg in proc.cmdline()):
-            pids.append(str(proc.pid))
-            # keep looking, might be multiple instances running
-
-    return pids
 
 
 def svn_checkout(branch_ce, branch_pro, svn_user):
@@ -350,19 +263,12 @@ def configure_buildomatic(db_type, db_host, app_server_type):
     check_db_type(db_type)
     #writes default_master.properties file
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
-        write_app_server_section(f, app_server_type)
+        get_app_server(app_server_type).configure_buildomatic(f)
         write_db_section(f, db_type, db_host)
         write_source_section(f)
 
     if (db_type in supported_db_types_pro):
         copy_buildomatic_additional()
-
-
-def write_app_server_section(f, app_server_type):
-    if (app_server_type == None or app_server_type == ""):
-        app_server_type = "tomcat7"
-    f.write("appServerType = " + app_server_type + "\n")
-    f.write("appServerDir = " + tomcat_home + "\n")
 
 
 def write_db_section(f, db_type, db_host):
@@ -416,44 +322,10 @@ def tweak_buildomatic_for_dev_env():
             line = line.replace(searchString, searchString + '<arg value="source:jar-no-fork"/>')
         print(line, end="")
 
-def ensure_tomcat():
-    download_tomcat()
-    extract_tomcat()
-    configure_tomcat()
-
-
-def download_tomcat():
-    distribution_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
-    if (not os.path.isfile(tomcat_distribution_file)):
-        os.makedirs(os.path.dirname(tomcat_distribution_file), exist_ok=True)
-        log_info("Downloading tomcat " + _tomcat_ver + " from " + distribution_url)
-        urllib.request.urlretrieve(distribution_url, tomcat_distribution_file, print_progress)
-        print()
-
-
-def extract_tomcat():
-    if (not os.path.isdir(tomcat_home)):
-        os.makedirs(tomcat_home)
-        log_info("Extracting tomcat into " + tomcat_home)
-        subprocess.check_call(["tar", "-xf", tomcat_distribution_file, "-C", tomcat_home, "--strip-components=1"], stdout=subprocess_stdout)
-
-
-def configure_tomcat():
-    with open(tomcat_home + "/bin/setenv.sh", "w") as f:
-        f.write(textwrap.dedent("""
-            export CATALINA_OPTS="-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
-        """).strip().format(tomcat_home))
-
-
 def print_progress(count, blockSize, totalSize):
     percent = int(count * blockSize * 100 / totalSize)
     sys.stdout.write("\r%3d%%" % percent)
     sys.stdout.flush()
-
-
-def execute_catalina_action(action):
-    subprocess.check_call([tomcat_home + "/bin/catalina.sh", action],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def check_if_db_is_up():
@@ -506,6 +378,15 @@ def get_working_environment(args):
     return "dev"
 
 
+def get_app_server(app_server_type = None):
+    if not app_server_type:
+        app_server_type = get_buildomatic_property("appServerType")
+    if app_server_type == "tomcat7":
+        return Tomcat7AppServer()
+    else:
+        raise ValueError("App server not supported: " + app_server_type)
+
+
 def log_error(message):
     log_color(message, color.RED, color.BRIGHT)
 
@@ -518,19 +399,154 @@ def log_debug(message):
     log_color(message, color.WHITE, color.DIM)
 
 
-def log_info(message):
-    print(str(message))
+def log_info(message, end="\n"):
+    print(str(message), end=end)
 
 
 def log_color(message, fg, style):
     print("\033[" + fg + "m" + "\033[" + style + "m" + str(message) + "\033[0m")
+    
+class AppServer:
+    
+    def __init__(self, app_server_type, download_url, deployed_jrs_dir):
+        self.app_server_type = app_server_type
+        self.app_server_dir = os.getcwd() + "/" + self.app_server_type
+        self.download_url = download_url
+        self.deploy_dir = deployed_jrs_dir
+    
+    def configure_buildomatic(self, file):
+        file.write("appServerType = " + self.app_server_type + "\n")
+        file.write("appServerDir = " + self.app_server_dir + "\n")
+        
+    def install(self):
+        file = self.__download(self.download_url)
+        self.__extract(file)
+        self.__post_install()
 
+    def __download(self, download_url):
+        file = os.path.expanduser("~") + "/.cache/jst/" + download_url[download_url.rindex("/") + 1:]
+        if (not os.path.isfile(file)):
+            os.makedirs(os.path.dirname(file), exist_ok=True)
+            log_info("Downloading app server from " + download_url)
+            urllib.request.urlretrieve(download_url, file)
+        
+        return file
+    
+
+    def __extract(self, file):
+        if (not os.path.isdir(self.app_server_dir)):
+            os.makedirs(self.app_server_dir)
+            log_info("Extracting app server into " + self.app_server_dir)
+            if file.endswith("tar.gz"):
+                subprocess.check_call(["tar", "-xf", file, "-C", self.app_server_dir, "--strip-components=1"], stdout=subprocess_stdout)
+            else:
+                raise ValueError("unsupported app server archive " + file)
+    
+    def __post_install(self):
+        pass
+    
+    
+    def deploy(self, files):
+        self.install()
+        for file in files:
+            if not file.endswith("sources.jar"):
+                shutil.copy(file, self.app_server_dir + "/" + self.deployed_jrs_dir + "/WEB-INF/lib")
+                log_info("Deployed: " + file)
+                
+    
+    def start(self):
+        raise ValueError("not implemented")
+
+    
+    def ps(self):
+        raise ValueError("not implemented")
+    
+    
+    def stop(self):
+        raise ValueError("not implemented")
+    
+    
+class Tomcat7AppServer(AppServer):
+    
+    def __init__(self):
+        download_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
+        super(Tomcat7AppServer, self).__init__("tomcat7", download_url, "webapps/jasperserver-pro")
+        
+    def __post_install(self):
+        with open(self.app_server_dir + "/bin/setenv.sh", "w") as f:
+            f.write(textwrap.dedent("""
+                export CATALINA_OPTS="-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
+            """).strip())
+
+    def __get_pids(self):
+        catalina_main_class_arg = "org.apache.catalina.startup.Bootstrap"
+        catalina_home_arg = "-Dcatalina.home=" + self.app_server_dir
+        pids = []
+    
+        for proc in psutil.process_iter():
+            if (proc.name() == "java" \
+                    and catalina_main_class_arg in proc.cmdline() \
+                    and catalina_home_arg in proc.cmdline()):
+                pids.append(str(proc.pid))
+                # keep looking, might be multiple instances running
+    
+        return pids
+
+    def start(self):
+        pids = self.__get_pids()
+        if (pids):
+            log_info("Already running; pid(s): " + ", ".join(pids))
+            return
+    
+        check_if_db_is_up()
+        log_info("Starting tomcat")
+        self.__execute_catalina_action("start")
+        self.ps()
+
+    def __execute_catalina_action(self, action):
+        subprocess.check_call([self.app_server_dir + "/bin/catalina.sh", action],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+    def ps(self):
+        pids = self.__get_pids()
+        if (pids):
+            log_info("pid(s): " + ", ".join(pids))
+        else:
+            log_info("tomcat is down")
+
+    def stop(self):
+        pids = self.__get_pids()
+        if (pids):
+            self.__stop_gracefully(30)
+            pids = self.__get_pids()
+            if (pids):
+                log_warning("Unable to stop gracefully")
+                for pid in pids:
+                    log_warning("killing process with pid " + pid)
+                    psutil.Process(int(pid)).kill()
+    
+        self.ps()
+
+
+    def __stop_gracefully(self, timeout):
+        self.__execute_catalina_action("stop")
+        log_info("Stopping tomcat", end="")
+        #sys.stdout.write("Waiting for tomcat to stop")
+        sys.stdout.flush()
+        elapsed = 0 # number of seconds since shutdown initiated
+        while (self.__get_pids() and elapsed <= timeout):
+            time.sleep(1)
+            elapsed += 1
+            sys.stdout.write(".")
+            sys.stdout.flush()
+    
+        print()
+    
 
 # working environment
 env_list = ["dev", "ci"]
 env = ""
-tomcat_home = os.getcwd() + "/tomcat"
-tomcat_distribution_file = os.path.expanduser("~") + "/.cache/jst/apache-tomcat-" + _tomcat_ver + ".tar.gz"
 ce_dir = os.getcwd() + "/ce"
 pro_dir = os.getcwd() + "/pro"
 supported_db_types_pro = ["oracle"]
