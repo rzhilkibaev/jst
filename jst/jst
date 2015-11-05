@@ -471,7 +471,7 @@ class AppServer:
 class DummyAppServer(AppServer):
 
     def __init__(self):
-        super(Tomcat7AppServer, self).__init__("skipAppServerCheck", "", "")
+        super(DummyAppServer, self).__init__("skipAppServerCheck", "", "")
     
     
 class Tomcat7AppServer(AppServer):
