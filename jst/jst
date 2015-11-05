@@ -383,6 +383,8 @@ def get_app_server(app_server_type = None):
         app_server_type = get_buildomatic_property("appServerType")
     if app_server_type == "tomcat7":
         return Tomcat7AppServer()
+    elif app_server_type == "skipAppServerCheck":
+        return DummyAppServer()
     else:
         raise ValueError("App server not supported: " + app_server_type)
 
@@ -464,6 +466,12 @@ class AppServer:
     
     def stop(self):
         raise ValueError("not implemented")
+    
+
+class DummyAppServer(AppServer):
+
+    def __init__(self):
+        super(Tomcat7AppServer, self).__init__("skipAppServerCheck", "", "")
     
     
 class Tomcat7AppServer(AppServer):
