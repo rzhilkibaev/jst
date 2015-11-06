@@ -421,11 +421,11 @@ class AppServer:
         file.write("appServerDir = " + self.app_server_dir + "\n")
         
     def install(self):
-        file = self.__download(self.download_url)
-        self.__extract(file)
-        self.__post_install()
+        file = self._download(self.download_url)
+        self._extract(file)
+        self._post_install()
 
-    def __download(self, download_url):
+    def _download(self, download_url):
         file = os.path.expanduser("~") + "/.cache/jst/" + download_url[download_url.rindex("/") + 1:]
         if (not os.path.isfile(file)):
             os.makedirs(os.path.dirname(file), exist_ok=True)
@@ -435,7 +435,7 @@ class AppServer:
         return file
     
 
-    def __extract(self, file):
+    def _extract(self, file):
         if (not os.path.isdir(self.app_server_dir)):
             os.makedirs(self.app_server_dir)
             log_info("Extracting app server into " + self.app_server_dir)
@@ -444,7 +444,7 @@ class AppServer:
             else:
                 raise ValueError("unsupported app server archive " + file)
     
-    def __post_install(self):
+    def _post_install(self):
         pass
     
     
@@ -480,7 +480,7 @@ class Tomcat7AppServer(AppServer):
         download_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
         super(Tomcat7AppServer, self).__init__("tomcat7", download_url, "webapps/jasperserver-pro")
         
-    def __post_install(self):
+    def _post_install(self):
         with open(self.app_server_dir + "/bin/setenv.sh", "w") as f:
             f.write(textwrap.dedent("""
                 export CATALINA_OPTS="-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
