@@ -133,6 +133,8 @@ def cmd_build(directory, run_tests):
 
     if (not run_tests):
         args += ["-DSKIP_TEST_ARG=skipTests"]
+        
+    get_app_server().install()
 
     changed_env = ensure_java7()
     log_info("Building")
@@ -472,6 +474,14 @@ class DummyAppServer(AppServer):
 
     def __init__(self):
         super(DummyAppServer, self).__init__("skipAppServerCheck", "", "")
+        
+        
+    def install(self):
+        pass
+    
+    
+    def deploy(self, files):
+        raise ValueError("deploy not supported for dummy server")
     
     
 class Tomcat7AppServer(AppServer):
