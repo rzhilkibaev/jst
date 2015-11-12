@@ -569,7 +569,7 @@ ce_dir = os.getcwd() + "/ce"
 pro_dir = os.getcwd() + "/pro"
 supported_db_types_pro = ["oracle"]
 supported_db_types = ["postgresql", "mysql"] + supported_db_types_pro
-subprocess_stdout = subprocess.DEVNULL
+subprocess_stdout = None
 
 
 class color:
@@ -590,8 +590,8 @@ if (__name__ == "__main__"):
 
     args = docopt.docopt(__doc__, version="0.1")
 
-    if (args["--verbose"]):
-        subprocess_stdout = None
+    if (not args["--verbose"]):
+        subprocess_stdout = open("jst.log", "a+")
 
     env = get_working_environment(args)
 
@@ -602,3 +602,6 @@ if (__name__ == "__main__"):
         if (args["--verbose"]):
             traceback.print_exc()
         exit(1)
+    finally:
+        if (subprocess_stdout):
+            subprocess_stdout.close()
