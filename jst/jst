@@ -55,7 +55,7 @@ import docopt
 import getpass
 
 
-_tomcat_ver = "7.0.64"
+_tomcat7_ver = "7.0.64"
 
 def main(args):
 
@@ -487,7 +487,7 @@ class DummyAppServer(AppServer):
 class Tomcat7AppServer(AppServer):
     
     def __init__(self):
-        download_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat_ver + "/bin/apache-tomcat-" + _tomcat_ver + ".tar.gz"
+        download_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat7_ver + "/bin/apache-tomcat-" + _tomcat7_ver + ".tar.gz"
         super(Tomcat7AppServer, self).__init__("tomcat7", download_url, "webapps/jasperserver-pro")
         
     def _post_install(self):
