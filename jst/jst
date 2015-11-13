@@ -454,7 +454,7 @@ class AppServer:
         self.install()
         for file in files:
             if not file.endswith("sources.jar"):
-                shutil.copy(file, self.app_server_dir + "/" + self.deployed_jrs_dir + "/WEB-INF/lib")
+                shutil.copy(file, self.app_server_dir + "/" + self.deploy_dir + "/WEB-INF/lib")
                 log_info("Deployed: " + file)
                 
     
