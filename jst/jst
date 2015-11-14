@@ -53,9 +53,11 @@ import urllib.request
 
 import docopt
 import getpass
+import zipfile
 
 
 _tomcat7_ver = "7.0.64"
+_jboss_eap_6_ver = "6.4.0.GA"
 
 def main(args):
 
@@ -99,6 +101,8 @@ def main(args):
         cmd_configure(args["--dbType"], args["--dbHost"], args["--appServerType"], )
     elif (args["init-db"]):
         cmd_init_db()
+    elif (args["test"]):
+        cmd_test()
     else:
         raise ValueError("Unknown arguments:\n" + str(args))
 
@@ -385,6 +389,8 @@ def get_app_server(app_server_type = None):
         app_server_type = get_buildomatic_property("appServerType")
     if app_server_type == "tomcat7":
         return Tomcat7AppServer()
+    elif app_server_type == "jboss-eap-6":
+        return JBossEAP6AppServer()
     elif app_server_type == "skipAppServerCheck":
         return DummyAppServer()
     else:
@@ -417,38 +423,52 @@ class AppServer:
         self.app_server_dir = os.getcwd() + "/" + self.app_server_type
         self.download_url = download_url
         self.deploy_dir = deployed_jrs_dir
+        self.pid_search_string = ""
     
     def configure_buildomatic(self, file):
         file.write("appServerType = " + self.app_server_type + "\n")
         file.write("appServerDir = " + self.app_server_dir + "\n")
         
     def install(self):
-        file = self._download(self.download_url)
+        file = os.path.expanduser("~") + "/.cache/jst/" + self.download_url[self.download_url.rindex("/") + 1:]
+        if (not os.path.isfile(file)):
+            os.makedirs(os.path.dirname(file), exist_ok=True)
+            log_info("Downloading app server from " + self.download_url)
+            self._download(self.download_url, file)
         self._extract(file)
         self._post_install()
 
-    def _download(self, download_url):
-        file = os.path.expanduser("~") + "/.cache/jst/" + download_url[download_url.rindex("/") + 1:]
-        if (not os.path.isfile(file)):
-            os.makedirs(os.path.dirname(file), exist_ok=True)
-            log_info("Downloading app server from " + download_url)
-            urllib.request.urlretrieve(download_url, file)
-        
-        return file
+    def _download(self, download_url, file):
+        urllib.request.urlretrieve(download_url, file)
     
 
     def _extract(self, file):
         if (not os.path.isdir(self.app_server_dir)):
             os.makedirs(self.app_server_dir)
             log_info("Extracting app server into " + self.app_server_dir)
-            if file.endswith("tar.gz"):
+            if file.endswith(".tar.gz"):
                 subprocess.check_call(["tar", "-xf", file, "-C", self.app_server_dir, "--strip-components=1"], stdout=subprocess_stdout)
+            elif file.endswith(".zip"):
+                self.__unzip_strip(file, self.app_server_dir)
             else:
-                raise ValueError("unsupported app server archive " + file)
+                raise ValueError("Unsupported app server archive " + file)
     
     def _post_install(self):
         pass
     
+    
+    def __unzip_strip(self, src_file, dest_dir):
+        print("extracting " + str(src_file))
+        with zipfile.ZipFile(src_file) as zf:
+            for member in zf.infolist():
+                # strip parent directory
+                member.filename = member.filename[member.filename.index("/"):]
+                zf.extract(member, dest_dir)
+                # https://bugs.python.org/issue15795
+                unix_attributes = member.external_attr >> 16
+                if unix_attributes:
+                    os.chmod(dest_dir + "/" + member.filename, unix_attributes)
+
     
     def deploy(self, files):
         self.install()
@@ -459,16 +479,69 @@ class AppServer:
                 
     
     def start(self):
+        pids = self._get_pids()
+        if (pids):
+            log_info(self.app_server_type + " already running; pid(s): " + ", ".join(pids))
+            return
+    
+        check_if_db_is_up()
+        log_info("Starting " + self.app_server_type)
+        self._start()
+        self.ps()
+        
+    def _start(self):
         raise ValueError("not implemented")
 
     
     def ps(self):
-        raise ValueError("not implemented")
-    
+        pids = self._get_pids()
+        if (pids):
+            log_info("pid(s): " + ", ".join(pids))
+        else:
+            log_info(self.app_server_type + " is down")
+
     
     def stop(self):
+        pids = self._get_pids()
+        if (pids):
+            self.__stop_gracefully(30)
+            pids = self._get_pids()
+            if (pids):
+                log_warning("Unable to stop " + self.app_server_type + " gracefully")
+                for pid in pids:
+                    log_warning("killing process with pid " + pid)
+                    psutil.Process(int(pid)).kill()
+    
+        self.ps()
+    
+    
+    def __stop_gracefully(self, timeout):
+            log_info("Stopping " + self.app_server_type, end="")
+            self._stop()
+            sys.stdout.flush()
+            elapsed = 0 # number of seconds since shutdown initiated
+            while (self._get_pids() and elapsed <= timeout):
+                time.sleep(1)
+                elapsed += 1
+                sys.stdout.write(".")
+                sys.stdout.flush()
+            print()
+    
+    def _stop(self):
         raise ValueError("not implemented")
     
+    
+    def _get_pids(self):
+        pids = []
+    
+        for proc in psutil.process_iter():
+            if (proc.name() == "java" \
+                    and self.pid_search_string in proc.cmdline()):
+                pids.append(str(proc.pid))
+                # keep looking, might be multiple instances running
+    
+        return pids
+
 
 class DummyAppServer(AppServer):
 
@@ -489,6 +562,7 @@ class Tomcat7AppServer(AppServer):
     def __init__(self):
         download_url = "http://www.gtlib.gatech.edu/pub/apache/tomcat/tomcat-7/v" + _tomcat7_ver + "/bin/apache-tomcat-" + _tomcat7_ver + ".tar.gz"
         super(Tomcat7AppServer, self).__init__("tomcat7", download_url, "webapps/jasperserver-pro")
+        self.pid_search_string = "-Dcatalina.home=" + self.app_server_dir
         
     def _post_install(self):
         with open(self.app_server_dir + "/bin/setenv.sh", "w") as f:
@@ -496,71 +570,44 @@ class Tomcat7AppServer(AppServer):
                 export CATALINA_OPTS="-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
             """).strip())
 
-    def __get_pids(self):
-        catalina_main_class_arg = "org.apache.catalina.startup.Bootstrap"
-        catalina_home_arg = "-Dcatalina.home=" + self.app_server_dir
-        pids = []
-    
-        for proc in psutil.process_iter():
-            if (proc.name() == "java" \
-                    and catalina_main_class_arg in proc.cmdline() \
-                    and catalina_home_arg in proc.cmdline()):
-                pids.append(str(proc.pid))
-                # keep looking, might be multiple instances running
-    
-        return pids
 
-    def start(self):
-        pids = self.__get_pids()
-        if (pids):
-            log_info("Already running; pid(s): " + ", ".join(pids))
-            return
-    
-        check_if_db_is_up()
-        log_info("Starting tomcat")
+    def _start(self):
         self.__execute_catalina_action("start")
-        self.ps()
+
 
     def __execute_catalina_action(self, action):
         subprocess.check_call([self.app_server_dir + "/bin/catalina.sh", action],
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-    def ps(self):
-        pids = self.__get_pids()
-        if (pids):
-            log_info("pid(s): " + ", ".join(pids))
-        else:
-            log_info("tomcat is down")
-
-    def stop(self):
-        pids = self.__get_pids()
-        if (pids):
-            self.__stop_gracefully(30)
-            pids = self.__get_pids()
-            if (pids):
-                log_warning("Unable to stop gracefully")
-                for pid in pids:
-                    log_warning("killing process with pid " + pid)
-                    psutil.Process(int(pid)).kill()
-    
-        self.ps()
-
-
-    def __stop_gracefully(self, timeout):
+    def _stop(self):
         self.__execute_catalina_action("stop")
-        log_info("Stopping tomcat", end="")
-        #sys.stdout.write("Waiting for tomcat to stop")
-        sys.stdout.flush()
-        elapsed = 0 # number of seconds since shutdown initiated
-        while (self.__get_pids() and elapsed <= timeout):
-            time.sleep(1)
-            elapsed += 1
-            sys.stdout.write(".")
-            sys.stdout.flush()
     
-        print()
+
+class JBossEAP6AppServer(AppServer):
     
+    def __init__(self):
+        download_url = "http://www.jboss.org/download-manager/file/jboss-eap-" + _jboss_eap_6_ver + ".zip"
+        super(JBossEAP6AppServer, self).__init__("jboss-eap-6", download_url, "change-me")
+        self.pid_search_string = "-Djboss.home.dir=" + self.app_server_dir
+        
+
+    def _download(self, download_url, file):
+        raise ValueError("Downloading of JBoss EAP is not supported. Download from " + download_url)
+
+    def _start(self):
+        subprocess.Popen([self.app_server_dir + "/bin/standalone.sh", "--debug", "1044"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(2) # it takes a while to start up
+
+    def _stop(self):
+        pids = self._get_pids()
+        if (pids):
+            for pid in pids:
+                psutil.Process(int(pid)).terminate()
+
+
+def cmd_test():
+    JBossEAP6AppServer().stop()
 
 # working environment
 env_list = ["dev", "ci"]
