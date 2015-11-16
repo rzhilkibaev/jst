@@ -504,7 +504,7 @@ class AppServer:
     def stop(self):
         pids = self._get_pids()
         if (pids):
-            self.__stop_gracefully(30)
+            self.__stop_gracefully(10)
             pids = self._get_pids()
             if (pids):
                 log_warning("Unable to stop " + self.app_server_type + " gracefully")
