@@ -56,7 +56,7 @@ import getpass
 import zipfile
 
 
-_tomcat7_ver = "7.0.64"
+_tomcat7_ver = "7.0.67"
 _jboss_eap_6_ver = "6.4.0.GA"
 
 def main(args):
