@@ -337,10 +337,14 @@ def print_progress(count, blockSize, totalSize):
 def check_if_db_is_up():
     """checks if db is up"""
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = s.connect_ex((get_db_host(), get_db_port()))
+    db_host = get_db_host()
+    db_port = get_db_port()
+    try:
+        result = s.connect_ex((db_host, db_port))
+    except Exception as e:
+        raise  IOError("DB host is unknown: " + db_host)
     if (result != 0):
-        raise IOError("DB is down")
-
+        raise IOError("DB host is known but service is down: " + db_host + ":" + db_port)
     s.close()
     
     
