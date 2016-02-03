@@ -344,7 +344,7 @@ def check_if_db_is_up():
     except Exception as e:
         raise  IOError("DB host is unknown: " + db_host)
     if (result != 0):
-        raise IOError("DB host is known but service is down: " + db_host + ":" + db_port)
+        raise IOError("DB host is known but service is down: " + db_host + ":" + str(db_port))
     s.close()
     
     
