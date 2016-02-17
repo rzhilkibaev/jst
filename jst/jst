@@ -5,7 +5,7 @@ Usage:
        jst init BRANCH_CE BRANCH_PRO [SVN_USER] [options]
        jst (build|bd) [DIR] [--test] [options]
        jst deploy [DIR] [options]
-       jst (start|stop|restart|ps|status|update|diff|revert|init-db) [options]
+       jst (start|stop|restart|ps|status|update|diff|revert|init-db|clean) [options]
        jst svn SVN_ARGS...
        jst configure [--dbType=<dbType>] [--dbHost=<dbHost>] [--appServerType=<appServerType>] [options]
 
@@ -29,6 +29,7 @@ Commands:
     svn         run arbitrary svn command against both source trees
     configure   change default_master.properties according to parameters
     init-db     create jasperserver, foodmart and sugarcm databases
+    clean       clean maven cache and remove app server 
 
 Examples:
     jst init branches/bugfix branches/bugfix-pro anonymous
@@ -101,8 +102,10 @@ def main(args):
         cmd_configure(args["--dbType"], args["--dbHost"], args["--appServerType"], )
     elif (args["init-db"]):
         cmd_init_db()
-    elif (args["test"]):
-        cmd_test()
+    elif (args["clean"]):
+        cmd_clean()
+#     elif (args["test"]):
+#         cmd_test()
     else:
         raise ValueError("Unknown arguments:\n" + str(args))
 
@@ -226,6 +229,13 @@ def cmd_init_db():
                      "run-production-data-pro"],
                           cwd=ce_dir + "/buildomatic", stdout=subprocess_stdout)
 
+
+def cmd_clean():
+    get_app_server().clean()
+    shutil.rmtree(os.path.expanduser("~") + "/.m2/repository/com/jaspersoft")
+    shutil.rmtree(os.path.expanduser("~") + "/.m2/repository/jaspersoft")
+    shutil.rmtree(os.path.expanduser("~") + "/.m2/repository/tibcosoftwareinc")
+    
 
 def assert_initialized():
     if (not os.path.isdir(ce_dir) or not os.path.isdir(pro_dir)):
@@ -545,6 +555,9 @@ class AppServer:
                 # keep looking, might be multiple instances running
     
         return pids
+    
+    def clean(self):
+        shutil.rmtree(self.app_server_dir)
 
 
 class DummyAppServer(AppServer):
