@@ -621,12 +621,12 @@ class JBossEAP6AppServer(AppServer):
     
     def __init__(self):
         download_url = "http://www.jboss.org/download-manager/file/jboss-eap-" + _jboss_eap_6_ver + ".zip"
-        super(JBossEAP6AppServer, self).__init__("jboss-eap-6", download_url, "change-me")
+        super(JBossEAP6AppServer, self).__init__("jboss-eap-6", download_url, "standalone/deployments/jasperserver-pro.war")
         self.pid_search_string = "-Djboss.home.dir=" + self.app_server_dir
         
 
     def _download(self, download_url, file):
-        raise ValueError("Downloading of JBoss EAP is not supported. Download from " + download_url)
+        raise ValueError("Downloading of JBoss EAP is not supported. Download from " + download_url + " to " + str(file))
 
     def _start(self):
         subprocess.Popen([self.app_server_dir + "/bin/standalone.sh", "--debug", "1044"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
