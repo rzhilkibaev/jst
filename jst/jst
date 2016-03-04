@@ -232,9 +232,9 @@ def cmd_init_db():
 
 def cmd_clean():
     get_app_server().clean()
-    shutil.rmtree(os.path.expanduser("~") + "/.m2/repository/com/jaspersoft")
-    shutil.rmtree(os.path.expanduser("~") + "/.m2/repository/jaspersoft")
-    shutil.rmtree(os.path.expanduser("~") + "/.m2/repository/tibcosoftwareinc")
+    rmdir_if_exists(os.path.expanduser("~") + "/.m2/repository/com/jaspersoft")
+    rmdir_if_exists(os.path.expanduser("~") + "/.m2/repository/jaspersoft")
+    rmdir_if_exists(os.path.expanduser("~") + "/.m2/repository/tibcosoftwareinc")
     
 
 def assert_initialized():
@@ -301,6 +301,10 @@ def write_db_section(f, db_type, db_host):
         f.write("dbType = mysql\n")
         f.write("dbUsername = root\n")
         f.write("dbPassword = password\n")
+    elif (db_type == "sqlserver"):
+        f.write("dbType = sqlserver\n")
+        f.write("dbUsername = sa\n")
+        f.write("dbPassword = sa\n")
     elif (db_type == "oracle"):
         f.write("dbType = oracle\n")
         f.write("sid = xe\n")
@@ -332,11 +336,16 @@ def copy(src, dst):
 
 def tweak_buildomatic_for_dev_env():
     """makes maven install sources into local repository"""
-    searchString = '<arg value="clean"/>'
-    for line in fileinput.input(ce_dir + "/buildomatic/bin/dev.xml", inplace=True):
+    replace_in_file(ce_dir + "/buildomatic/bin/dev.xml", '<arg value="clean"/>', '<arg value="clean"/><arg value="source:jar-no-fork"/>')
+    replace_in_file(ce_dir + "/buildomatic/bin/dev.xml", '<jvmarg value="-Xmx1024m"/>', '<jvmarg value="-Xmx2g"/>')
+
+
+def replace_in_file(fileName, searchString, newString):
+    for line in fileinput.input(fileName, inplace=True):
         if (line.strip() == searchString):
-            line = line.replace(searchString, searchString + '<arg value="source:jar-no-fork"/>')
+            line = line.replace(searchString, newString)
         print(line, end="")
+
 
 def print_progress(count, blockSize, totalSize):
     percent = int(count * blockSize * 100 / totalSize)
@@ -375,6 +384,7 @@ def get_default_db_port():
     check_db_type(db_type)
     db_type_to_default_port_dict = {"postgresql": 5432,
                                     "mysql": 3306,
+                                    "sqlserver": 1433,
                                     "oracle": 1521}
     return db_type_to_default_port_dict[db_type]
         
@@ -429,6 +439,12 @@ def log_info(message, end="\n"):
 
 def log_color(message, fg, style):
     print("\033[" + fg + "m" + "\033[" + style + "m" + str(message) + "\033[0m")
+    
+def rmdir_if_exists(path):
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+        log_info("removed " + path)
+
     
 class AppServer:
     
@@ -557,7 +573,7 @@ class AppServer:
         return pids
     
     def clean(self):
-        shutil.rmtree(self.app_server_dir)
+        rmdir_if_exists(self.app_server_dir)
 
 
 class DummyAppServer(AppServer):
@@ -631,7 +647,7 @@ env_list = ["dev", "ci"]
 env = ""
 ce_dir = os.getcwd() + "/ce"
 pro_dir = os.getcwd() + "/pro"
-supported_db_types_pro = ["oracle"]
+supported_db_types_pro = ["oracle", "sqlserver"]
 supported_db_types = ["postgresql", "mysql"] + supported_db_types_pro
 subprocess_stdout = None
 
