@@ -276,16 +276,23 @@ def normalize_branch_name(branch):
 
 def configure_buildomatic(db_type, db_host, app_server_type):
     log_info("Configuring buildomatic")
-    check_db_type(db_type)
+    # check arguments before opening the config
+    # the file gets erased upon opening
+    if db_type:
+        check_db_type(db_type)
+    else:
+        db_type = get_db_type()
+    app_server = get_app_server(app_server_type)
     #writes default_master.properties file
     with open(ce_dir + "/buildomatic/default_master.properties", "w") as f:
-        get_app_server(app_server_type).configure_buildomatic(f)
+        app_server.configure_buildomatic(f)
         write_db_section(f, db_type, db_host)
         write_source_section(f)
 
     if (db_type in supported_db_types_pro):
         copy_buildomatic_additional()
 
+    gen_config()
 
 def write_db_section(f, db_type, db_host):
     if (db_host == None):
@@ -313,7 +320,7 @@ def write_db_section(f, db_type, db_host):
         f.write("sysUsername = system\n")
         f.write("sysPassword = oracle\n")
     else:
-        raise ValueError("Unknown db type " + db_type)
+        raise ValueError("Unknown db type " + str(db_type))
 
 def check_db_type(db_type):
     if (db_type not in supported_db_types):
@@ -366,6 +373,10 @@ def check_if_db_is_up():
         raise IOError("DB host is known but service is down: " + db_host + ":" + str(db_port))
     s.close()
     
+    
+def get_db_type():
+    return get_buildomatic_property("dbType")
+        
     
 def get_db_host():
     return get_buildomatic_property("dbHost")
@@ -420,6 +431,12 @@ def get_app_server(app_server_type = None):
     else:
         raise ValueError("App server not supported: " + app_server_type)
 
+def gen_config():
+    log_info("Generating buildomatic configuration")
+    get_app_server().install()
+    subprocess.check_call(["ant", "clean-config"], cwd=ce_dir + "/buildomatic", stdout=subprocess_stdout)
+    subprocess.check_call(["ant", "gen-config"], cwd=ce_dir + "/buildomatic", stdout=subprocess_stdout)
+    
 
 def log_error(message):
     log_color(message, color.RED, color.BRIGHT)
