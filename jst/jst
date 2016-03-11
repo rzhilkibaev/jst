@@ -57,7 +57,7 @@ import getpass
 import zipfile
 
 
-_tomcat7_ver = "7.0.67"
+_tomcat7_ver = "7.0.68"
 _jboss_eap_6_ver = "6.4.0.GA"
 _glassfish4_ver = "4.1.1"
 
