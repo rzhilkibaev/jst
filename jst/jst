@@ -58,6 +58,7 @@ import zipfile
 
 
 _tomcat7_ver = "7.0.68"
+_tomcat8_ver = "8.0.14"
 _jboss_eap_6_ver = "6.4.0.GA"
 _glassfish4_ver = "4.1.1"
 
@@ -425,6 +426,8 @@ def get_app_server(app_server_type = None):
         app_server_type = get_buildomatic_property("appServerType")
     if app_server_type == "tomcat7":
         return Tomcat7AppServer()
+    elif app_server_type == "tomcat8":
+        return Tomcat8AppServer()
     elif app_server_type == "jboss-eap-6":
         return JBossEAP6AppServer()
     elif app_server_type == "glassfish3":
@@ -617,6 +620,34 @@ class Tomcat7AppServer(AppServer):
         super(Tomcat7AppServer, self).__init__("tomcat7", download_url, "webapps/jasperserver-pro")
         self.pid_search_string = "-Dcatalina.home=" + self.app_server_dir
         
+    def _post_install(self):
+        with open(self.app_server_dir + "/bin/setenv.sh", "w") as f:
+            f.write(textwrap.dedent("""
+                export CATALINA_OPTS="-agentlib:jdwp=transport=dt_socket,address=1044,server=y,suspend=n -Djavax.xml.soap.SOAPFactory=org.apache.axis.soap.SOAPFactoryImpl -Djavax.xml.transform.TransformerFactory=org.apache.xalan.processor.TransformerFactoryImpl -Djavax.xml.soap.SOAPConnectionFactory=org.apache.axis.soap.SOAPConnectionFactoryImpl -Djavax.xml.soap.MessageFactory=org.apache.axis.soap.MessageFactoryImpl -Djava.net.preferIPv4Stack=true -Xms1024m -Xmx2048m -XX:PermSize=32m -XX:MaxPermSize=512m -Xss2m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
+            """).strip())
+
+
+    def _start(self):
+        self.__execute_catalina_action("start")
+
+
+    def __execute_catalina_action(self, action):
+        subprocess.check_call([self.app_server_dir + "/bin/catalina.sh", action],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+    def _stop(self):
+        self.__execute_catalina_action("stop")
+    
+
+class Tomcat8AppServer(AppServer):
+    
+    def __init__(self):
+        download_url = "http://archive.apache.org/dist/tomcat/tomcat-8/v" + _tomcat8_ver + "/bin/apache-tomcat-" + _tomcat8_ver + ".tar.gz"
+        super(Tomcat8AppServer, self).__init__("tomcat8", download_url, "webapps/jasperserver-pro")
+        self.pid_search_string = "-Dcatalina.home=" + self.app_server_dir
+    
+
     def _post_install(self):
         with open(self.app_server_dir + "/bin/setenv.sh", "w") as f:
             f.write(textwrap.dedent("""
